@@ -1,122 +1,58 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
-
+<html>
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chromium 底层噪声注入验证</title>
+    <title>传感器噪声注入验证</title>
     <style>
-        body {
-            font-family: sans-serif;
-            padding: 20px;
-            background: #f0f2f5;
-        }
-
-        .card {
-            background: white;
-            border-radius: 8px;
-            padding: 15px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-            margin-bottom: 20px;
-        }
-
-        .value {
-            font-family: monospace;
-            font-size: 1.2em;
-            color: #007bff;
-            font-weight: bold;
-        }
-
-        #visualizer {
-            width: 100px;
-            height: 100px;
-            background: red;
-            margin: 20px auto;
-            transition: transform 0.1s;
-        }
-
-        .status {
-            color: #28a745;
-            font-weight: bold;
-        }
-
-        .error {
-            color: #dc3545;
-        }
+        body { font-family: monospace; line-height: 1.5; padding: 20px; }
+        .val { color: #007bff; font-weight: bold; }
+        .delta-box { border-left: 4px solid #ccc; padding-left: 10px; margin-top: 10px; }
+        .highlight { color: #28a745; font-weight: bold; }
     </style>
 </head>
-
 <body>
-
-    <div class="card">
-        <h3>传感器实时数值 (DeviceOrientation)</h3>
-        <p>Alpha (Z): <span id="alpha" class="value">0.0000</span></p>
-        <p>Beta (X): <span id="beta" class="value">0.0000</span></p>
-        <p>Gamma (Y): <span id="gamma" class="value">0.0000</span></p>
-        <p>状态: <span id="status">等待数据...</span></p>
+    <h3>实时数据 (已修正跳变逻辑)</h3>
+    <div>Alpha: <span id="alpha" class="val">0</span></div>
+    <div>Beta : <span id="beta" class="val">0</span></div>
+    <div>Gamma: <span id="gamma" class="val">0</span></div>
+    
+    <div class="delta-box">
+        <div>有效波动 (Clean Delta): <span id="delta" class="val">0</span></div>
+        <div id="status">检测中...</div>
     </div>
-
-    <div class="card">
-        <h3>微颤检测分析</h3>
-        <p>当前波动 (Delta): <span id="delta" class="value">0.000000</span></p>
-        <p>注：如果 Delta 在滑动时激增，说明噪声注入逻辑已生效。</p>
-    </div>
-
-    <div id="visualizer"></div>
 
     <script>
         let lastAlpha = 0;
-        const alphaEl = document.getElementById('alpha');
-        const betaEl = document.getElementById('beta');
-        const gammaEl = document.getElementById('gamma');
-        const deltaEl = document.getElementById('delta');
-        const statusEl = document.getElementById('status');
-        const visualizer = document.getElementById('visualizer');
 
-        // 核心监听逻辑
         window.addEventListener('deviceorientation', (event) => {
-            // 容错处理：云机可能返回 null
-            const a = event.alpha !== null ? event.alpha : 0;
-            const b = event.beta !== null ? event.beta : 0;
-            const g = event.gamma !== null ? event.gamma : 0;
+            const a = event.alpha || 0;
+            const b = event.beta || 0;
+            const g = event.gamma || 0;
 
-            // 更新 UI
-            alphaEl.innerText = a.toFixed(6);
-            betaEl.innerText = b.toFixed(6);
-            gammaEl.innerText = g.toFixed(6);
-            statusEl.innerText = "正在接收数据";
-            statusEl.className = "status";
+            document.getElementById('alpha').innerText = a.toFixed(6);
+            document.getElementById('beta').innerText = b.toFixed(6);
+            document.getElementById('gamma').innerText = g.toFixed(6);
 
-            // 计算 Delta (前端验证 C++ 中的 delta 逻辑)
-            const currentDelta = Math.abs(a - lastAlpha);
-            deltaEl.innerText = currentDelta.toFixed(8);
+            // --- 核心修正逻辑：处理 360 度循环误差 ---
+            let diff = Math.abs(a - lastAlpha);
+            if (diff > 180) {
+                // 如果差值大于 180，说明发生了从 359.9 到 0.1 的边界跳变
+                // 我们取其圆周上的最短距离
+                diff = Math.abs(diff - 360);
+            }
 
-            // 视觉反馈：方块随 Beta 旋转
-            visualizer.style.transform = `rotate(${b}deg)`;
+            document.getElementById('delta').innerText = diff.toFixed(8);
 
-            // 如果 delta 极小但数值末尾仍在跳动，说明白噪声引擎在工作
-            if (currentDelta > 0 && currentDelta < 0.001) {
-                deltaEl.style.color = "#ff8c00"; // 橙色：底噪
-            } else if (currentDelta >= 0.001) {
-                deltaEl.style.color = "#dc3545"; // 红色：注入了动态噪声
+            // 状态判定
+            const statusEl = document.getElementById('status');
+            if (diff > 0.001) {
+                statusEl.innerHTML = '<span class="highlight">正在注入动态噪声 (滑动中)</span>';
+            } else {
+                statusEl.innerText = '当前为保底底噪 (静止)';
             }
 
             lastAlpha = a;
         }, true);
-
-        // 处理 Chrome 权限（部分版本需要手动触发）
-        document.body.onclick = () => {
-            if (typeof DeviceOrientationEvent.requestPermission === 'function') {
-                DeviceOrientationEvent.requestPermission()
-                    .then(permissionState => {
-                        if (permissionState === 'granted') {
-                            statusEl.innerText = "权限已授予";
-                        }
-                    })
-                    .catch(console.error);
-            }
-        };
     </script>
 </body>
-
 </html>
