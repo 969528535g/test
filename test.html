@@ -92,39 +92,46 @@
     </div>
 
     <script>
-        let lastAlpha = 0;
+    let lastValues = { a: 0, b: 0, g: 0 };
+let lastTimestamp = 0;
 
-        // 处理 Chrome 权限和激活
-        document.getElementById('click-area').onclick = function() {
-            this.style.display = 'none';
-        };
+window.addEventListener('deviceorientation', (event) => {
+    const { alpha: a, beta: b, gamma: g } = event;
+    const now = performance.now();
 
-        window.addEventListener('deviceorientation', (event) => {
-            const a = event.alpha || 0;
-            const b = event.beta || 0;
-            const g = event.gamma || 0;
+    // 1. 更新 UI
+    document.getElementById('alpha').innerText = a.toFixed(6);
+    document.getElementById('beta').innerText = b.toFixed(6);
+    document.getElementById('gamma').innerText = g.toFixed(6);
 
-            document.getElementById('alpha').innerText = a.toFixed(6);
-            document.getElementById('beta').innerText = b.toFixed(6);
-            document.getElementById('gamma').innerText = g.toFixed(6);
+    // 2. 计算三轴综合变动量 (欧几里得距离)
+    const delta = Math.sqrt(
+        Math.pow(a - lastValues.a, 2) + 
+        Math.pow(b - lastValues.b, 2) + 
+        Math.pow(g - lastValues.g, 2)
+    );
 
-            // 处理 360 度循环误差
-            let diff = Math.abs(a - lastAlpha);
-            if (diff > 180) {
-                diff = Math.abs(diff - 360);
-            }
+    // 3. 计算频率 (Hz)
+    let freq = 0;
+    if (lastTimestamp > 0) {
+        freq = 1000 / (now - lastTimestamp);
+    }
 
-            document.getElementById('delta').innerText = diff.toFixed(8);
+    document.getElementById('delta').innerText = delta.toFixed(8);
 
-            const statusEl = document.getElementById('status');
-            if (diff > 0.001) {
-                statusEl.innerHTML = '<span class="highlight">🟢 正在注入动态噪声 (滑动中)</span>';
-            } else {
-                statusEl.innerText = '⚪ 当前为保底底噪 (静止)';
-            }
+    const statusEl = document.getElementById('status');
+    // 判断逻辑优化：结合综合变动量
+    if (delta > 0.0001) {
+        statusEl.innerHTML = `<span class="highlight">🟢 动态中 | 频率: ${freq.toFixed(1)}Hz</span>`;
+    } else {
+        statusEl.innerHTML = `⚪ 静止中 | 频率: ${freq.toFixed(1)}Hz`;
+    }
 
-            lastAlpha = a;
-        }, true);
+    // 4. 存档记录
+    lastValues = { a, b, g };
+    lastTimestamp = now;
+}, true);
     </script>
 </body>
 </html>
+
