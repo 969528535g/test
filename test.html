@@ -1,137 +1,130 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>传感器验证-大字版</title>
-    <style>
-        /* 针对云机大屏优化的样式 */
-        body { 
-            font-family: 'Courier New', monospace; 
-            line-height: 1.6; 
-            padding: 20px; 
-            background-color: #1a1a1a; 
-            color: #eee;
-        }
-        h3 { color: #fff; border-bottom: 2px solid #444; padding-bottom: 10px; font-size: 24px; }
-        
-        .data-item { 
-            margin: 15px 0; 
-            background: #2a2a2a; 
-            padding: 15px; 
-            border-radius: 8px;
-        }
-        
-        .label { font-size: 18px; color: #aaa; }
-        
-        /* 这里的数值字号加到 32px，确保清晰 */
-        .val { 
-            display: block;
-            font-size: 32px; 
-            color: #007bff; 
-            font-weight: bold; 
-            word-break: break-all;
-        }
-        
-        .delta-box { 
-            border-top: 4px solid #007bff; 
-            background: #222;
-            padding: 20px; 
-            margin-top: 30px; 
-            border-radius: 0 0 10px 10px;
-        }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>传感器验证-大字版</title>
+    <style>
+        /* 针对云机大屏优化的样式 */
+        body { 
+            font-family: 'Courier New', monospace; 
+            line-height: 1.6; 
+            padding: 20px; 
+            background-color: #1a1a1a; 
+            color: #eee;
+        }
+        h3 { color: #fff; border-bottom: 2px solid #444; padding-bottom: 10px; font-size: 24px; }
+        
+        .data-item { 
+            margin: 15px 0; 
+            background: #2a2a2a; 
+            padding: 15px; 
+            border-radius: 8px;
+        }
+        
+        .label { font-size: 18px; color: #aaa; }
+        
+        /* 这里的数值字号加到 32px，确保清晰 */
+        .val { 
+            display: block;
+            font-size: 32px; 
+            color: #007bff; 
+            font-weight: bold; 
+            word-break: break-all;
+        }
+        
+        .delta-box { 
+            border-top: 4px solid #007bff; 
+            background: #222;
+            padding: 20px; 
+            margin-top: 30px; 
+            border-radius: 0 0 10px 10px;
+        }
 
-        #status { 
-            margin-top: 15px;
-            font-size: 20px; 
-            padding: 10px;
-            text-align: center;
-            border-radius: 5px;
-            background: #333;
-        }
+        #status { 
+            margin-top: 15px;
+            font-size: 20px; 
+            padding: 10px;
+            text-align: center;
+            border-radius: 5px;
+            background: #333;
+        }
 
-        .highlight { color: #28a745; font-weight: bold; font-size: 22px; }
-        
-        /* 增加一个点击测试区，方便激活权限 */
-        #click-area {
-            text-align: center;
-            padding: 20px;
-            background: #007bff;
-            color: white;
-            border-radius: 10px;
-            margin-bottom: 20px;
-            font-size: 18px;
-        }
-    </style>
+        .highlight { color: #28a745; font-weight: bold; font-size: 22px; }
+        
+        /* 增加一个点击测试区，方便激活权限 */
+        #click-area {
+            text-align: center;
+            padding: 20px;
+            background: #007bff;
+            color: white;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            font-size: 18px;
+        }
+    </style>
 </head>
 <body>
 
-    <div id="click-area">若无数据，请点此激活传感器</div>
+    <div id="click-area">若无数据，请点此激活传感器</div>
 
-    <h3>实时数据 (已修正跳变)</h3>
-    
-    <div class="data-item">
-        <span class="label">Alpha (Z轴)</span>
-        <span id="alpha" class="val">0.000000</span>
-    </div>
-    
-    <div class="data-item">
-        <span class="label">Beta (X轴)</span>
-        <span id="beta" class="val">0.000000</span>
-    </div>
-    
-    <div class="data-item">
-        <span class="label">Gamma (Y轴)</span>
-        <span id="gamma" class="val">0.000000</span>
-    </div>
-    
-    <div class="delta-box">
-        <span class="label">有效波动 (Clean Delta)</span>
-        <span id="delta" class="val" style="color: #ffc107;">0.00000000</span>
-        <div id="status">等待数据...</div>
-    </div>
+    <h3>实时数据 (已修正跳变)</h3>
+    
+    <div class="data-item">
+        <span class="label">Alpha (Z轴)</span>
+        <span id="alpha" class="val">0.000000</span>
+    </div>
+    
+    <div class="data-item">
+        <span class="label">Beta (X轴)</span>
+        <span id="beta" class="val">0.000000</span>
+    </div>
+    
+    <div class="data-item">
+        <span class="label">Gamma (Y轴)</span>
+        <span id="gamma" class="val">0.000000</span>
+    </div>
+    
+    <div class="delta-box">
+        <span class="label">有效波动 (Clean Delta)</span>
+        <span id="delta" class="val" style="color: #ffc107;">0.00000000</span>
+        <div id="status">等待数据...</div>
+    </div>
 
-    <script>
-    let lastValues = { a: 0, b: 0, g: 0 };
-let lastTimestamp = 0;
+    <script>
+        let lastAlpha = 0;
 
-window.addEventListener('deviceorientation', (event) => {
-    const { alpha: a, beta: b, gamma: g } = event;
-    const now = performance.now();
+        // 处理 Chrome 权限和激活
+        document.getElementById('click-area').onclick = function() {
+            this.style.display = 'none';
+        };
 
-    // 1. 更新 UI
-    document.getElementById('alpha').innerText = a.toFixed(6);
-    document.getElementById('beta').innerText = b.toFixed(6);
-    document.getElementById('gamma').innerText = g.toFixed(6);
+        window.addEventListener('deviceorientation', (event) => {
+            const a = event.alpha || 0;
+            const b = event.beta || 0;
+            const g = event.gamma || 0;
 
-    // 2. 计算三轴综合变动量 (欧几里得距离)
-    const delta = Math.sqrt(
-        Math.pow(a - lastValues.a, 2) + 
-        Math.pow(b - lastValues.b, 2) + 
-        Math.pow(g - lastValues.g, 2)
-    );
+            document.getElementById('alpha').innerText = a.toFixed(6);
+            document.getElementById('beta').innerText = b.toFixed(6);
+            document.getElementById('gamma').innerText = g.toFixed(6);
 
-    // 3. 计算频率 (Hz)
-    let freq = 0;
-    if (lastTimestamp > 0) {
-        freq = 1000 / (now - lastTimestamp);
-    }
+            // 处理 360 度循环误差
+            let diff = Math.abs(a - lastAlpha);
+            if (diff > 180) {
+                diff = Math.abs(diff - 360);
+            }
 
-    document.getElementById('delta').innerText = delta.toFixed(8);
+            document.getElementById('delta').innerText = diff.toFixed(8);
 
-    const statusEl = document.getElementById('status');
-    // 判断逻辑优化：结合综合变动量
-    if (delta > 0.0001) {
-        statusEl.innerHTML = `<span class="highlight">🟢 动态中 | 频率: ${freq.toFixed(1)}Hz</span>`;
-    } else {
-        statusEl.innerHTML = `⚪ 静止中 | 频率: ${freq.toFixed(1)}Hz`;
-    }
+            const statusEl = document.getElementById('status');
+            if (diff > 0.001) {
+                statusEl.innerHTML = '<span class="highlight">🟢 正在注入动态噪声 (滑动中)</span>';
+            } else {
+                statusEl.innerText = '⚪ 当前为保底底噪 (静止)';
+            }
 
-    // 4. 存档记录
-    lastValues = { a, b, g };
-    lastTimestamp = now;
-}, true);
-    </script>
+            lastAlpha = a;
+        }, true);
+    </script>
 </body>
 </html>
-
