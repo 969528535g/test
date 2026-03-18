@@ -17,7 +17,7 @@
 </head>
 <body>
 
-    <h2>Google Botguard 级检测模拟1</h2>
+    <h2>Google Botguard 级检测模拟</h2>
 
     <div class="card">
         <h3>1. 引擎堆栈指纹 (Error Stack Trace)</h3>
@@ -55,7 +55,7 @@
         try {
             null[0];
         } catch (e) {
-            const isV8 = e.stack.includes("at <anonymous>") ;
+            const isV8 = e.message.includes("properties of null") || e.stack.includes("at <anonymous>");
             if (isV8) {
                 updateStatus('stack-v8', '发现 V8 堆栈特征 (致命暴露)', 'fail');
             } else {
