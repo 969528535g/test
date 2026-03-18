@@ -1,184 +1,67 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FingerprintJS 集成演示</title>
-    <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-            max-width: 800px;
-            margin: 40px auto;
-            padding: 20px;
-            background: #f5f7fa;
-        }
-        .card {
-            background: white;
-            border-radius: 12px;
-            padding: 24px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-        }
-        h1 {
-            margin-top: 0;
-            color: #1a1a1a;
-            font-size: 24px;
-        }
-        .info {
-            background: #f0f4f8;
-            border-radius: 8px;
-            padding: 16px;
-            margin: 16px 0;
-        }
-        .row {
-            display: flex;
-            justify-content: space-between;
-            margin: 8px 0;
-            padding: 8px 0;
-            border-bottom: 1px solid #e1e4e8;
-        }
-        .label {
-            font-weight: 600;
-            color: #4a5568;
-        }
-        .value {
-            color: #2d3748;
-            font-family: monospace;
-            word-break: break-all;
-        }
-        .badge {
-            display: inline-block;
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-size: 14px;
-            margin-bottom: 16px;
-        }
-        .badge.success {
-            background: #c6f6d5;
-            color: #22543d;
-        }
-        .badge.loading {
-            background: #feebc8;
-            color: #744210;
-        }
-        pre {
-            background: #2d3748;
-            color: #e2e8f0;
-            padding: 12px;
-            border-radius: 6px;
-            overflow-x: auto;
-            font-size: 13px;
-        }
-    </style>
+    <title>FingerprintJS 最终测试</title>
 </head>
 <body>
-    <div class="card">
-        <h1>🔍 FingerprintJS v4 集成示例</h1>
-        
-        <div id="status-badge" class="badge loading">⏳ 加载中...</div>
-        
-        <div class="info">
-            <div class="row">
-                <span class="label">Visitor ID (访客标识):</span>
-                <span id="visitor-id" class="value">-</span>
-            </div>
-            <div class="row">
-                <span class="label">Event ID (事件标识):</span>
-                <span id="event-id" class="value">-</span>
-            </div>
-            <div class="row">
-                <span class="label">请求ID:</span>
-                <span id="request-id" class="value">-</span>
-            </div>
-            <div class="row">
-                <span class="label">时间戳:</span>
-                <span id="timestamp" class="value">-</span>
-            </div>
-            <div class="row">
-                <span class="label">URL:</span>
-                <span id="url" class="value">-</span>
-            </div>
-        </div>
-
-        <div style="margin-top: 20px;">
-            <h3>📋 完整响应数据</h3>
-            <pre id="full-response">等待获取指纹数据...</pre>
-        </div>
-    </div>
+    <h2>FingerprintJS 测试页面</h2>
+    <div id="status">⏳ 加载中...</div>
+    <div id="result"></div>
 
     <script>
-        // 更新状态的辅助函数
-        function updateElement(id, value) {
-            const el = document.getElementById(id);
-            if (el) el.innerText = value || '-';
-        }
-
-        // 初始化 FingerprintJS
-        (async function initFingerprint() {
+        (async function() {
+            const statusEl = document.getElementById('status');
+            const resultEl = document.getElementById('result');
+            
             try {
-                // 显示加载状态
-                document.getElementById('status-badge').innerHTML = '⏳ 加载 FingerprintJS...';
+                statusEl.innerText = '⏳ 加载 FingerprintJS...';
                 
-                // 加载 FingerprintJS
-                const Fingerprint = await import('https://fpjscdn.net/v4/bXP69s3GWgOj5MPXOEpH');
+                // 1. 导入模块
+                const FingerprintModule = await import('https://fpjscdn.net/v4/bXP69s3GWgOj5MPXOEpH');
+                console.log('模块加载成功:', Object.keys(FingerprintModule));
                 
-                document.getElementById('status-badge').innerHTML = '⏳ 启动代理...';
+                statusEl.innerText = '⏳ 启动代理...';
                 
-                // 启动
-                const fp = await Fingerprint.start();
-                
-                document.getElementById('status-badge').innerHTML = '⏳ 获取指纹...';
-                
-                // 获取指纹数据
-                const result = await fp.get();
-                
-                // 更新状态
-                document.getElementById('status-badge').className = 'badge success';
-                document.getElementById('status-badge').innerHTML = '✅ 已获取指纹';
-                
-                // 显示主要数据
-                updateElement('visitor-id', result.visitorId);
-                updateElement('event-id', result.event_id || '-');
-                updateElement('request-id', result.requestId || '-');
-                
-                // 如果有时间戳
-                if (result.timestamp) {
-                    const date = new Date(result.timestamp);
-                    updateElement('timestamp', date.toLocaleString());
+                // 2. 启动 - 注意：根据导出情况，可能需要这样调用
+                // 可能的启动方式1：如果有默认导出
+                let fp;
+                if (typeof FingerprintModule.default === 'function') {
+                    fp = await FingerprintModule.default.start();
+                } 
+                // 可能的启动方式2：直接有 start 函数
+                else if (typeof FingerprintModule.start === 'function') {
+                    fp = await FingerprintModule.start();
+                }
+                // 可能的启动方式3：模块本身是函数
+                else if (typeof FingerprintModule === 'function') {
+                    fp = await FingerprintModule();
+                }
+                else {
+                    throw new Error('无法找到启动函数，可用导出: ' + Object.keys(FingerprintModule).join(', '));
                 }
                 
-                // URL
-                updateElement('url', result.url || window.location.href);
+                statusEl.innerText = '⏳ 获取指纹...';
                 
-                // 显示完整响应
-                document.getElementById('full-response').innerText = 
-                    JSON.stringify(result, null, 2);
+                // 3. 获取指纹
+                const result = await fp.get();
                 
-                // 控制台输出 (保持原始需求)
-                console.log('FingerprintJS 结果:', result.event_id, result.visitor_id);
+                // 4. 显示结果
+                statusEl.innerText = '✅ 成功！';
+                resultEl.innerHTML = `
+                    <p><strong>Visitor ID:</strong> ${result.visitorId}</p>
+                    <p><strong>Request ID:</strong> ${result.requestId}</p>
+                    <p><strong>完整响应:</strong></p>
+                    <pre>${JSON.stringify(result, null, 2)}</pre>
+                `;
+                
+                console.log('FingerprintJS 成功:', result);
                 
             } catch (error) {
-                console.error('FingerprintJS 错误:', error);
-                
-                document.getElementById('status-badge').className = 'badge loading';
-                document.getElementById('status-badge').innerHTML = '❌ 加载失败';
-                document.getElementById('full-response').innerText = 
-                    `错误: ${error.message}\n\n请检查:\n1. 网络连接\n2. 是否被广告拦截器阻止\n3. 控制台查看详情`;
-                
-                // 尝试输出到控制台
-                console.error('FingerprintJS 初始化失败:', error);
+                statusEl.innerText = '❌ 失败';
+                resultEl.innerHTML = `<p style="color: red">错误: ${error.message}</p>`;
+                console.error('详细错误:', error);
             }
         })();
     </script>
-
-    <!-- 保留原始脚本作为参考，但已被上面的代码覆盖 -->
-    <!-- 
-    <script>
-        const fpPromise = import('https://fpjscdn.net/v4/bXP69s3GWgOj5MPXOEpH')
-            .then(Fingerprint => Fingerprint.start())
-        fpPromise
-            .then(fp => fp.get())
-            .then(result => console.log(result.event_id, result.visitor_id))
-    </script>
-    -->
 </body>
 </html>
