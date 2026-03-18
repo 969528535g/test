@@ -41,8 +41,9 @@
         <div class="row"><span>window.chrome 对象:</span><span id="chrome-obj">检测中...</span></div>
         <div class="row"><span>SharedWorker 支持:</span><span id="shared-worker">检测中...</span></div>
     </div>
-<script>
-  // Initialize the agent at application startup.
+
+    <script>
+        // Initialize the agent at application startup.
   const fpPromise = import('https://fpjscdn.net/v4/bXP69s3GWgOj5MPXOEpH')
     .then(Fingerprint => Fingerprint.start())
 
@@ -50,8 +51,6 @@
   fpPromise
     .then(fp => fp.get())
     .then(result => console.log(result.event_id, result.visitor_id))
-</script>
-    <script>
         function updateStatus(id, text, statusClass) {
             const el = document.getElementById(id);
             el.innerText = text;
