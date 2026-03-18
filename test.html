@@ -2,62 +2,106 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>Client Hints 指纹检测</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Chromium 源码修改审计 (ALIDOA Project)</title>
     <style>
-        body { font-family: sans-serif; line-height: 1.6; padding: 20px; background: #f4f4f9; }
-        .card { background: white; padding: 15px; border-radius: 8px; shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 20px; }
-        .status { font-weight: bold; color: #d9534f; }
-        pre { background: #272822; color: #f8f8f2; padding: 15px; border-radius: 5px; overflow-x: auto; }
-        .valid { color: #5cb85c; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: #f0f2f5; padding: 20px; color: #333; }
+        .card { background: white; border-radius: 12px; padding: 20px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+        h2 { border-bottom: 2px solid #eee; padding-bottom: 10px; color: #007aff; }
+        .row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #fafafa; }
+        .label { font-weight: 600; color: #666; }
+        .value { font-family: monospace; word-break: break-all; text-align: right; }
+        .pass { color: #28a745; font-weight: bold; }
+        .fail { color: #dc3545; font-weight: bold; }
+        .warning { color: #ffc107; font-weight: bold; }
+        .report-header { text-align: center; margin-bottom: 30px; }
     </style>
 </head>
 <body>
 
-    <h2>Client Hints (UAData) 探测</h2>
+<div class="report-header">
+    <h1>环境模拟审计报告</h1>
+    <p>当前时间: <span id="current-time"></span></p>
+</div>
 
-    <div class="card">
-        <p>支持状态: <span id="support-status" class="status">检测中...</span></p>
-        <p>基础平台 (Low Entropy): <span id="base-platform">-</span></p>
-        <p>是否移动端: <span id="is-mobile">-</span></p>
-    </div>
+<div class="card">
+    <h2>1. 物理逻辑 (Viewport vs Screen)</h2>
+    <div id="logic-metrics"></div>
+</div>
 
-    <div class="card">
-        <h3>高熵值详情 (High Entropy Values)</h3>
-        <p><small>注：这些值通常需要异步请求，模拟 iOS 时应确保此处报错或返回空。</small></p>
-        <pre id="high-entropy-log">等待异步获取...</pre>
-    </div>
+<div class="card">
+    <h2>2. Navigator 核心属性</h2>
+    <div id="nav-metrics"></div>
+</div>
 
-    <script>
-        const supportEl = document.getElementById('support-status');
-        const logEl = document.getElementById('high-entropy-log');
+<div class="card">
+    <h2>3. Client Hints (Blink 泄露)</h2>
+    <div id="ch-metrics"></div>
+</div>
 
-        if (navigator.userAgentData) {
-            supportEl.innerText = "已启用 (Chromium 特征)";
-            supportEl.className = "status valid";
+<div class="card">
+    <h2>4. iOS 专有指纹探测</h2>
+    <div id="ios-metrics"></div>
+</div>
 
-            // 1. 获取低熵基础信息（直接读取）
-            document.getElementById('base-platform').innerText = navigator.userAgentData.platform;
-            document.getElementById('is-mobile').innerText = navigator.userAgentData.mobile;
+<script>
+    document.getElementById('current-time').innerText = new Date().toLocaleString();
 
-            // 2. 获取高熵详细信息（异步请求）
-            // 常见的 hints: 'architecture', 'model', 'platformVersion', 'fullVersionList'
-            navigator.userAgentData.getHighEntropyValues([
-                'architecture', 
-                'model', 
-                'platformVersion', 
-                'uaFullVersion', 
-                'fullVersionList',
-                'bitness'
-            ]).then(values => {
-                logEl.innerText = JSON.stringify(values, null, 4);
-            }).catch(err => {
-                logEl.innerText = "获取失败: " + err.message;
-            });
+    function addRow(containerId, label, value, status = '') {
+        const container = document.getElementById(containerId);
+        const row = document.createElement('div');
+        row.className = 'row';
+        row.innerHTML = `<span class="label">${label}</span><span class="value ${status}">${value}</span>`;
+        container.appendChild(row);
+    }
 
-        } else {
-            supportEl.innerText = "未定义 (符合 iOS/Safari 特征)";
-            logEl.innerText = "navigator.userAgentData 为 undefined。";
-        }
-    </script>
+    // --- 1. 逻辑检测 ---
+    const sw = window.screen.width;
+    const sh = window.screen.height;
+    const iw = window.innerWidth;
+    const ih = window.innerHeight;
+    const ow = window.outerWidth;
+    const oh = window.outerHeight;
+
+    addRow('logic-metrics', 'Screen Size', `${sw} x ${sh}`);
+    addRow('logic-metrics', 'Outer Window', `${ow} x ${oh}`);
+    addRow('logic-metrics', 'Viewport (Inner)', `${iw} x ${ih}`, (ih > sh) ? 'fail' : 'pass');
+    
+    if (ih > sh) {
+        addRow('logic-metrics', '⚠️ 警告', 'Viewport 高度超过屏幕高度！', 'fail');
+    }
+
+    // --- 2. Navigator 检测 ---
+    addRow('nav-metrics', 'userAgent', navigator.userAgent);
+    addRow('nav-metrics', 'platform', navigator.platform, (navigator.platform === 'iPhone' || navigator.platform === 'iPad') ? 'pass' : 'fail');
+    addRow('nav-metrics', 'vendor', navigator.vendor, (navigator.vendor.includes('Apple')) ? 'pass' : 'fail');
+    addRow('nav-metrics', 'maxTouchPoints', navigator.maxTouchPoints, (navigator.maxTouchPoints === 5) ? 'pass' : 'warning');
+
+    // --- 3. Client Hints 检测 ---
+    const hasUAData = !!navigator.userAgentData;
+    addRow('ch-metrics', 'navigator.userAgentData', hasUAData ? '已暴露 (Chromium)' : '未定义 (符合 iOS)', hasUAData ? 'fail' : 'pass');
+
+    // --- 4. iOS 专有特征检测 ---
+    // 真正的 iOS 浏览器通常支持这些
+    const isApplePay = !!window.ApplePaySession;
+    const isSafariObj = !!window.safari;
+    const standalone = !!window.navigator.standalone;
+    
+    addRow('ios-metrics', 'ApplePaySession', isApplePay ? '支持' : '不支持', isApplePay ? 'pass' : 'warning');
+    addRow('ios-metrics', 'window.safari', isSafariObj ? '存在' : '不存在', isSafariObj ? 'pass' : 'warning');
+    addRow('ios-metrics', 'Touch Callout', getComputedStyle(document.body).webkitTouchCallout !== undefined ? '支持' : '不支持', 'pass');
+
+    // 检测 WebGL 指纹
+    try {
+        const canvas = document.createElement('canvas');
+        const gl = canvas.getContext('webgl');
+        const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
+        const renderer = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
+        addRow('nav-metrics', 'WebGL Renderer', renderer, renderer.includes('Apple') ? 'pass' : 'fail');
+    } catch(e) {
+        addRow('nav-metrics', 'WebGL Renderer', '检测失败', 'fail');
+    }
+</script>
+
 </body>
 </html>
