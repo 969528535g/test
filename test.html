@@ -55,7 +55,7 @@
         try {
             null[0];
         } catch (e) {
-            const isV8 = e.message.includes("properties of null") ;
+            const isV8 = e.stack.includes("at <anonymous>") ;
             if (isV8) {
                 updateStatus('stack-v8', '发现 V8 堆栈特征 (致命暴露)', 'fail');
             } else {
