@@ -8,60 +8,15 @@
     <div id="status">⏳ 加载中...</div>
     <div id="result"></div>
 
-    <script>
-        (async function() {
-            const statusEl = document.getElementById('status');
-            const resultEl = document.getElementById('result');
-            
-            try {
-                statusEl.innerText = '⏳ 加载 FingerprintJS...';
-                
-                // 1. 导入模块
-                const FingerprintModule = await import('https://fpjscdn.net/v4/bXP69s3GWgOj5MPXOEpH');
-                console.log('模块加载成功:', Object.keys(FingerprintModule));
-                
-                statusEl.innerText = '⏳ 启动代理...';
-                
-                // 2. 启动 - 注意：根据导出情况，可能需要这样调用
-                // 可能的启动方式1：如果有默认导出
-                let fp;
-                if (typeof FingerprintModule.default === 'function') {
-                    fp = await FingerprintModule.default.start();
-                } 
-                // 可能的启动方式2：直接有 start 函数
-                else if (typeof FingerprintModule.start === 'function') {
-                    fp = await FingerprintModule.start();
-                }
-                // 可能的启动方式3：模块本身是函数
-                else if (typeof FingerprintModule === 'function') {
-                    fp = await FingerprintModule();
-                }
-                else {
-                    throw new Error('无法找到启动函数，可用导出: ' + Object.keys(FingerprintModule).join(', '));
-                }
-                
-                statusEl.innerText = '⏳ 获取指纹...';
-                
-                // 3. 获取指纹
-                const result = await fp.get();
-                
-                // 4. 显示结果
-                statusEl.innerText = '✅ 成功！';
-                resultEl.innerHTML = `
-                    <p><strong>Visitor ID:</strong> ${result.visitorId}</p>
-                    <p><strong>Request ID:</strong> ${result.requestId}</p>
-                    <p><strong>完整响应:</strong></p>
-                    <pre>${JSON.stringify(result, null, 2)}</pre>
-                `;
-                
-                console.log('FingerprintJS 成功:', result);
-                
-            } catch (error) {
-                statusEl.innerText = '❌ 失败';
-                resultEl.innerHTML = `<p style="color: red">错误: ${error.message}</p>`;
-                console.error('详细错误:', error);
-            }
-        })();
-    </script>
+   <script>
+  // Initialize the agent at application startup.
+  const fpPromise = import('https://fpjscdn.net/v4/bXP69s3GWgOj5MPXOEpH')
+    .then(Fingerprint => Fingerprint.start())
+
+  // Get the visitor and event identifier when you need it.
+  fpPromise
+    .then(fp => fp.get())
+    .then(result => console.log(result.event_id, result.visitor_id))
+</script>
 </body>
 </html>
