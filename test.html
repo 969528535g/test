@@ -2,106 +2,124 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Chromium 源码修改审计 (ALIDOA Project)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Botguard 深度指纹审计 (ALIDOA)</title>
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: #f0f2f5; padding: 20px; color: #333; }
-        .card { background: white; border-radius: 12px; padding: 20px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
-        h2 { border-bottom: 2px solid #eee; padding-bottom: 10px; color: #007aff; }
-        .row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #fafafa; }
-        .label { font-weight: 600; color: #666; }
-        .value { font-family: monospace; word-break: break-all; text-align: right; }
-        .pass { color: #28a745; font-weight: bold; }
-        .fail { color: #dc3545; font-weight: bold; }
-        .warning { color: #ffc107; font-weight: bold; }
-        .report-header { text-align: center; margin-bottom: 30px; }
+        body { font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont; background: #0d1117; color: #c9d1d9; padding: 20px; font-size: 14px; }
+        .card { background: #161b22; border: 1px solid #30363d; border-radius: 6px; padding: 15px; margin-bottom: 15px; }
+        h3 { margin-top: 0; color: #58a6ff; font-size: 15px; border-bottom: 1px solid #30363d; padding-bottom: 8px; }
+        .row { display: flex; justify-content: space-between; margin: 8px 0; border-bottom: 1px dashed #30363d; padding-bottom: 4px; }
+        .pass { color: #3fb950; font-weight: bold; }
+        .fail { color: #f85149; font-weight: bold; }
+        .warning { color: #d29922; font-weight: bold; }
+        pre { background: #010409; padding: 10px; border-radius: 4px; overflow-x: auto; color: #8b949e; }
     </style>
 </head>
 <body>
 
-<div class="report-header">
-    <h1>环境模拟审计报告</h1>
-    <p>当前时间: <span id="current-time"></span></p>
-</div>
+    <h2>Google Botguard 级检测模拟</h2>
 
-<div class="card">
-    <h2>1. 物理逻辑 (Viewport vs Screen)</h2>
-    <div id="logic-metrics"></div>
-</div>
+    <div class="card">
+        <h3>1. 引擎堆栈指纹 (Error Stack Trace)</h3>
+        <div class="row"><span>V8 错误格式检测:</span><span id="stack-v8">检测中...</span></div>
+    </div>
 
-<div class="card">
-    <h2>2. Navigator 核心属性</h2>
-    <div id="nav-metrics"></div>
-</div>
+    <div class="card">
+        <h3>2. 上下文逃逸 (Context Leakage)</h3>
+        <div class="row"><span>Iframe UA 逃逸:</span><span id="iframe-ua">检测中...</span></div>
+        <div class="row"><span>Worker Platform 逃逸:</span><span id="worker-plat">检测中...</span></div>
+    </div>
 
-<div class="card">
-    <h2>3. Client Hints (Blink 泄露)</h2>
-    <div id="ch-metrics"></div>
-</div>
+    <div class="card">
+        <h3>3. 媒体与网络硬件特征</h3>
+        <div class="row"><span>Network Information API:</span><span id="network-api">检测中...</span></div>
+        <div class="row"><span>WebM/VP9 解码器 (iOS 不支持):</span><span id="webm-codec">检测中...</span></div>
+    </div>
 
-<div class="card">
-    <h2>4. iOS 专有指纹探测</h2>
-    <div id="ios-metrics"></div>
-</div>
+    <div class="card">
+        <h3>4. V8 特有对象泄漏</h3>
+        <div class="row"><span>window.chrome 对象:</span><span id="chrome-obj">检测中...</span></div>
+        <div class="row"><span>SharedWorker 支持:</span><span id="shared-worker">检测中...</span></div>
+    </div>
 
-<script>
-    document.getElementById('current-time').innerText = new Date().toLocaleString();
+    <script>
+        function updateStatus(id, text, statusClass) {
+            const el = document.getElementById(id);
+            el.innerText = text;
+            el.className = statusClass;
+        }
 
-    function addRow(containerId, label, value, status = '') {
-        const container = document.getElementById(containerId);
-        const row = document.createElement('div');
-        row.className = 'row';
-        row.innerHTML = `<span class="label">${label}</span><span class="value ${status}">${value}</span>`;
-        container.appendChild(row);
-    }
+        // --- 1. 错误堆栈指纹 (V8 vs WebKit) ---
+        // V8 (Chromium) 报错格式带有明显的 "TypeError: Cannot read properties of null" 等字眼
+        // WebKit (iOS) 报错格式是 "null is not an object"
+        try {
+            null[0];
+        } catch (e) {
+            const isV8 = e.message.includes("properties of null") || e.stack.includes("at <anonymous>");
+            if (isV8) {
+                updateStatus('stack-v8', '发现 V8 堆栈特征 (致命暴露)', 'fail');
+            } else {
+                updateStatus('stack-v8', '完美伪装 (符合 WebKit)', 'pass');
+            }
+        }
 
-    // --- 1. 逻辑检测 ---
-    const sw = window.screen.width;
-    const sh = window.screen.height;
-    const iw = window.innerWidth;
-    const ih = window.innerHeight;
-    const ow = window.outerWidth;
-    const oh = window.outerHeight;
+        // --- 2. 上下文逃逸测试 ---
+        // 很多 C++ 补丁只改了 Main Frame，新建一个 about:blank 的 iframe 就会暴露原始 UA
+        const iframe = document.createElement('iframe');
+        iframe.style.display = 'none';
+        document.body.appendChild(iframe);
+        const frameUA = iframe.contentWindow.navigator.userAgent;
+        if (frameUA.includes("Android") || frameUA.includes("Linux")) {
+            updateStatus('iframe-ua', '原形毕露 (Iframe 返回 Android)', 'fail');
+        } else {
+            updateStatus('iframe-ua', '未逃逸', 'pass');
+        }
 
-    addRow('logic-metrics', 'Screen Size', `${sw} x ${sh}`);
-    addRow('logic-metrics', 'Outer Window', `${ow} x ${oh}`);
-    addRow('logic-metrics', 'Viewport (Inner)', `${iw} x ${ih}`, (ih > sh) ? 'fail' : 'pass');
-    
-    if (ih > sh) {
-        addRow('logic-metrics', '⚠️ 警告', 'Viewport 高度超过屏幕高度！', 'fail');
-    }
+        // Worker 测试
+        const blob = new Blob([`self.postMessage(navigator.platform)`]);
+        const worker = new Worker(URL.createObjectURL(blob));
+        worker.onmessage = (e) => {
+            if (e.data === "iPhone" || e.data === "MacIntel") {
+                updateStatus('worker-plat', '未逃逸', 'pass');
+            } else {
+                updateStatus('worker-plat', `原形毕露 (Worker Platform: ${e.data})`, 'fail');
+            }
+        };
 
-    // --- 2. Navigator 检测 ---
-    addRow('nav-metrics', 'userAgent', navigator.userAgent);
-    addRow('nav-metrics', 'platform', navigator.platform, (navigator.platform === 'iPhone' || navigator.platform === 'iPad') ? 'pass' : 'fail');
-    addRow('nav-metrics', 'vendor', navigator.vendor, (navigator.vendor.includes('Apple')) ? 'pass' : 'fail');
-    addRow('nav-metrics', 'maxTouchPoints', navigator.maxTouchPoints, (navigator.maxTouchPoints === 5) ? 'pass' : 'warning');
+        // --- 3. 媒体与网络硬件特征 ---
+        // 真正的 iOS WebKit 不暴露 navigator.connection
+        const hasConnection = !!navigator.connection;
+        if (hasConnection) {
+            updateStatus('network-api', '发现 Network API (iOS 应该未定义)', 'fail');
+        } else {
+            updateStatus('network-api', '未定义 (符合 iOS)', 'pass');
+        }
 
-    // --- 3. Client Hints 检测 ---
-    const hasUAData = !!navigator.userAgentData;
-    addRow('ch-metrics', 'navigator.userAgentData', hasUAData ? '已暴露 (Chromium)' : '未定义 (符合 iOS)', hasUAData ? 'fail' : 'pass');
+        // WebKit 历史上不支持 WebM/VP9（近几年部分支持 mp4/vp9，但 webm/vp8 依然是 Chromium 特征）
+        const video = document.createElement('video');
+        const canPlayWebM = video.canPlayType('video/webm; codecs="vp8"');
+        if (canPlayWebM !== "") {
+            updateStatus('webm-codec', `支持 WebM (${canPlayWebM}) - 典型安卓特征`, 'fail');
+        } else {
+            updateStatus('webm-codec', '不支持 (符合 iOS WebKit 限制)', 'pass');
+        }
 
-    // --- 4. iOS 专有特征检测 ---
-    // 真正的 iOS 浏览器通常支持这些
-    const isApplePay = !!window.ApplePaySession;
-    const isSafariObj = !!window.safari;
-    const standalone = !!window.navigator.standalone;
-    
-    addRow('ios-metrics', 'ApplePaySession', isApplePay ? '支持' : '不支持', isApplePay ? 'pass' : 'warning');
-    addRow('ios-metrics', 'window.safari', isSafariObj ? '存在' : '不存在', isSafariObj ? 'pass' : 'warning');
-    addRow('ios-metrics', 'Touch Callout', getComputedStyle(document.body).webkitTouchCallout !== undefined ? '支持' : '不支持', 'pass');
+        // --- 4. V8/Chromium 特有对象 ---
+        // iOS Chrome (CriOS) 其实是 WKWebView，没有 window.chrome
+        const hasChrome = !!window.chrome;
+        if (hasChrome) {
+            updateStatus('chrome-obj', '发现 window.chrome (致命暴露)', 'fail');
+        } else {
+            updateStatus('chrome-obj', '不存在 (符合 CriOS)', 'pass');
+        }
 
-    // 检测 WebGL 指纹
-    try {
-        const canvas = document.createElement('canvas');
-        const gl = canvas.getContext('webgl');
-        const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
-        const renderer = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
-        addRow('nav-metrics', 'WebGL Renderer', renderer, renderer.includes('Apple') ? 'pass' : 'fail');
-    } catch(e) {
-        addRow('nav-metrics', 'WebGL Renderer', '检测失败', 'fail');
-    }
-</script>
-
+        // 真正的 iOS Safari/Chrome 不支持 SharedWorker
+        const hasSharedWorker = !!window.SharedWorker;
+        if (hasSharedWorker) {
+            updateStatus('shared-worker', '支持 SharedWorker (iOS 应该不支持)', 'fail');
+        } else {
+            updateStatus('shared-worker', '不支持 (符合 iOS)', 'pass');
+        }
+    </script>
 </body>
 </html>
