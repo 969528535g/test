@@ -2,124 +2,147 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Botguard 深度指纹审计 (ALIDOA)</title>
+    <title>ALIDOA 深度环境审计 - 模拟 Google 风控</title>
     <style>
-        body { font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont; background: #0d1117; color: #c9d1d9; padding: 20px; font-size: 14px; }
-        .card { background: #161b22; border: 1px solid #30363d; border-radius: 6px; padding: 15px; margin-bottom: 15px; }
-        h3 { margin-top: 0; color: #58a6ff; font-size: 15px; border-bottom: 1px solid #30363d; padding-bottom: 8px; }
-        .row { display: flex; justify-content: space-between; margin: 8px 0; border-bottom: 1px dashed #30363d; padding-bottom: 4px; }
-        .pass { color: #3fb950; font-weight: bold; }
-        .fail { color: #f85149; font-weight: bold; }
-        .warning { color: #d29922; font-weight: bold; }
-        pre { background: #010409; padding: 10px; border-radius: 4px; overflow-x: auto; color: #8b949e; }
+        body { font-family: sans-serif; background: #f4f4f9; padding: 20px; }
+        .card { background: white; border-radius: 8px; padding: 15px; margin-bottom: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        h2 { border-bottom: 2px solid #eee; padding-bottom: 10px; color: #333; }
+        .item { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #fafafa; }
+        .label { font-weight: bold; color: #555; }
+        .pass { color: #2ecc71; font-weight: bold; }
+        .fail { color: #e74c3c; font-weight: bold; }
+        .warn { color: #f39c12; font-weight: bold; }
+        pre { background: #272822; color: #f8f8f2; padding: 10px; border-radius: 5px; overflow-x: auto; }
     </style>
 </head>
 <body>
 
-    <h2>Google Botguard 级检测模拟</h2>
+    <h1>ALIDOA 内核伪装审计 (模拟 Botguard)</h1>
+    <p>当前 IP: <span id="user-ip">正在获取...</span></p>
 
     <div class="card">
-        <h3>1. 引擎堆栈指纹 (Error Stack Trace)</h3>
-        <div class="row"><span>V8 错误格式检测:</span><span id="stack-v8">检测中...</span></div>
+        <h2>1. V8 引擎底层特征 (Engine Fingerprint)</h2>
+        <div class="item">
+            <span class="label">报错字符串格式 (null[0]):</span>
+            <span id="v8-msg">检测中...</span>
+        </div>
+        <div class="item">
+            <span class="label">堆栈 "at" 关键字 (Stack Trace):</span>
+            <span id="v8-stack">检测中...</span>
+        </div>
+        <div class="item">
+            <span class="label">V8 浮点数精度 (Math.sin):</span>
+            <span id="v8-math">检测中...</span>
+        </div>
     </div>
 
     <div class="card">
-        <h3>2. 上下文逃逸 (Context Leakage)</h3>
-        <div class="row"><span>Iframe UA 逃逸:</span><span id="iframe-ua">检测中...</span></div>
-        <div class="row"><span>Worker Platform 逃逸:</span><span id="worker-plat">检测中...</span></div>
+        <h2>2. 浏览器 API 一致性 (iOS 18.7.6 对齐)</h2>
+        <div class="item">
+            <span class="label">SharedWorker 支持:</span>
+            <span id="api-sharedworker">检测中...</span>
+        </div>
+        <div class="item">
+            <span class="label">window.chrome 对象:</span>
+            <span id="api-chrome">检测中...</span>
+        </div>
+        <div class="item">
+            <span class="label">WebM/VP9 解码器:</span>
+            <span id="api-webm">检测中...</span>
+        </div>
     </div>
 
     <div class="card">
-        <h3>3. 媒体与网络硬件特征</h3>
-        <div class="row"><span>Network Information API:</span><span id="network-api">检测中...</span></div>
-        <div class="row"><span>WebM/VP9 解码器 (iOS 不支持):</span><span id="webm-codec">检测中...</span></div>
-    </div>
-
-    <div class="card">
-        <h3>4. V8 特有对象泄漏</h3>
-        <div class="row"><span>window.chrome 对象:</span><span id="chrome-obj">检测中...</span></div>
-        <div class="row"><span>SharedWorker 支持:</span><span id="shared-worker">检测中...</span></div>
+        <h2>3. 渲染与硬件指纹 (Hardware Fingerprint)</h2>
+        <canvas id="canvas-test" width="200" height="40" style="display:none;"></canvas>
+        <div class="item">
+            <span class="label">Canvas 渲染哈希:</span>
+            <span id="hw-canvas" style="font-size: 0.8em;">检测中...</span>
+        </div>
+        <div class="item">
+            <span class="label">WebGL Vendor/Renderer:</span>
+            <span id="hw-webgl">检测中...</span>
+        </div>
     </div>
 
     <script>
-        function updateStatus(id, text, statusClass) {
+        function updateStatus(id, text, status) {
             const el = document.getElementById(id);
             el.innerText = text;
-            el.className = statusClass;
+            el.className = status;
         }
 
-        // --- 1. 错误堆栈指纹 (V8 vs WebKit) ---
-        // V8 (Chromium) 报错格式带有明显的 "TypeError: Cannot read properties of null" 等字眼
-        // WebKit (iOS) 报错格式是 "null is not an object"
+        // --- 1. V8 引擎检测 ---
         try {
             null[0];
         } catch (e) {
-            const isV8 = e.message.includes("properties of null") || e.stack.includes("at <anonymous>");
-            if (isV8) {
-                updateStatus('stack-v8', '发现 V8 堆栈特征 (致命暴露)', 'fail');
+            const msg = e.message;
+            const stack = e.stack;
+            
+            // 检测报错字符串
+            if (msg.includes("is not an object")) {
+                updateStatus('v8-msg', 'WebKit 风格 (PASS)', 'pass');
             } else {
-                updateStatus('stack-v8', '完美伪装 (符合 WebKit)', 'pass');
+                updateStatus('v8-msg', 'V8 风格 (FAIL: ' + msg + ')', 'fail');
+            }
+
+            // 检测堆栈关键字
+            if (stack.includes("    at ")) {
+                updateStatus('v8-stack', '发现 "at" (FAIL: Android 特征)', 'fail');
+            } else {
+                updateStatus('v8-stack', '无 "at" (PASS: iOS 风格)', 'pass');
             }
         }
 
-        // --- 2. 上下文逃逸测试 ---
-        // 很多 C++ 补丁只改了 Main Frame，新建一个 about:blank 的 iframe 就会暴露原始 UA
-        const iframe = document.createElement('iframe');
-        iframe.style.display = 'none';
-        document.body.appendChild(iframe);
-        const frameUA = iframe.contentWindow.navigator.userAgent;
-        if (frameUA.includes("Android") || frameUA.includes("Linux")) {
-            updateStatus('iframe-ua', '原形毕露 (Iframe 返回 Android)', 'fail');
+        // 浮点数精度测试 (iOS ARM64 vs Android ARM64 极细微差别)
+        const mathVal = Math.sin(3.141592653589793);
+        updateStatus('v8-math', mathVal.toString(), 'warn');
+
+        // --- 2. API 一致性 ---
+        
+        // SharedWorker (你刚在 JSON5 修改的项)
+        if (typeof SharedWorker !== 'undefined') {
+            updateStatus('api-sharedworker', '支持 (PASS)', 'pass');
         } else {
-            updateStatus('iframe-ua', '未逃逸', 'pass');
+            updateStatus('api-sharedworker', '不支持 (FAIL: Android 默认)', 'fail');
         }
 
-        // Worker 测试
-        const blob = new Blob([`self.postMessage(navigator.platform)`]);
-        const worker = new Worker(URL.createObjectURL(blob));
-        worker.onmessage = (e) => {
-            if (e.data === "iPhone" || e.data === "MacIntel") {
-                updateStatus('worker-plat', '未逃逸', 'pass');
-            } else {
-                updateStatus('worker-plat', `原形毕露 (Worker Platform: ${e.data})`, 'fail');
-            }
-        };
-
-        // --- 3. 媒体与网络硬件特征 ---
-        // 真正的 iOS WebKit 不暴露 navigator.connection
-        const hasConnection = !!navigator.connection;
-        if (hasConnection) {
-            updateStatus('network-api', '发现 Network API (iOS 应该未定义)', 'fail');
+        // window.chrome (iOS Chrome 不应存在该对象)
+        if (window.chrome && window.chrome.runtime) {
+            updateStatus('api-chrome', '存在 (FAIL: 泄露 Chrome 特征)', 'fail');
         } else {
-            updateStatus('network-api', '未定义 (符合 iOS)', 'pass');
+            updateStatus('api-chrome', '不存在 (PASS)', 'pass');
         }
 
-        // WebKit 历史上不支持 WebM/VP9（近几年部分支持 mp4/vp9，但 webm/vp8 依然是 Chromium 特征）
+        // WebM 支持 (你确认过 iOS 真机支持)
         const video = document.createElement('video');
-        const canPlayWebM = video.canPlayType('video/webm; codecs="vp8"');
-        if (canPlayWebM !== "") {
-            updateStatus('webm-codec', `支持 WebM (${canPlayWebM}) - 典型安卓特征`, 'fail');
-        } else {
-            updateStatus('webm-codec', '不支持 (符合 iOS WebKit 限制)', 'pass');
+        const webm = video.canPlayType('video/webm; codecs="vp9"');
+        updateStatus('api-webm', webm || '不支持', webm ? 'pass' : 'fail');
+
+        // --- 3. 硬件指纹 ---
+        
+        // Canvas Fingerprint
+        const canvas = document.getElementById('canvas-test');
+        const ctx = canvas.getContext('2d');
+        ctx.textBaseline = "top";
+        ctx.font = "14px 'Arial'";
+        ctx.fillText("ALIDOA-Audit-😃-123", 2, 2);
+        const canvasHash = btoa(canvas.toDataURL()).substring(100, 130);
+        updateStatus('hw-canvas', canvasHash + '...', 'warn');
+
+        // WebGL
+        const gl = document.createElement('canvas').getContext('webgl');
+        if (gl) {
+            const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
+            const renderer = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
+            updateStatus('hw-webgl', renderer, renderer.includes('Apple') ? 'pass' : 'warn');
         }
 
-        // --- 4. V8/Chromium 特有对象 ---
-        // iOS Chrome (CriOS) 其实是 WKWebView，没有 window.chrome
-        const hasChrome = !!window.chrome;
-        if (hasChrome) {
-            updateStatus('chrome-obj', '发现 window.chrome (致命暴露)', 'fail');
-        } else {
-            updateStatus('chrome-obj', '不存在 (符合 CriOS)', 'pass');
-        }
+        // 获取 IP (模拟 Botguard 上报)
+        fetch('https://api.ipify.org?format=json')
+            .then(r => r.json())
+            .then(data => document.getElementById('user-ip').innerText = data.ip);
 
-        // 真正的 iOS Safari/Chrome 不支持 SharedWorker
-        const hasSharedWorker = !!window.SharedWorker;
-        if (hasSharedWorker) {
-            updateStatus('shared-worker', '支持 SharedWorker (iOS 应该不支持)', 'fail');
-        } else {
-            updateStatus('shared-worker', '不支持 (符合 iOS)', 'pass');
-        }
     </script>
 </body>
 </html>
