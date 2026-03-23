@@ -2,96 +2,112 @@
 <html lang="zh">
 <head>
     <meta charset="UTF-8">
-    <title>内核指纹深度扫描</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chromium 内核指纹一致性诊断</title>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f4f7f6; padding: 40px; }
-        .card { background: white; border-radius: 12px; padding: 25px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); max-width: 800px; margin: auto; }
-        h1 { color: #333; font-size: 24px; border-bottom: 2px solid #eee; padding-bottom: 10px; }
-        .metric { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #fafafa; }
-        .label { font-weight: 600; color: #555; }
-        .value { font-family: monospace; color: #007bff; }
-        .status { font-weight: bold; }
-        .fail { color: #d32f2f; }
-        .pass { color: #388e3c; }
-        .warning { color: #f57c00; }
-        pre { background: #272822; color: #f8f8f2; padding: 15px; border-radius: 5px; overflow-x: auto; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0f172a; color: #e2e8f0; padding: 20px; }
+        .container { max-width: 900px; margin: 0 auto; }
+        .header { border-bottom: 1px solid #334155; padding-bottom: 20px; margin-bottom: 20px; }
+        .card { background: #1e293b; border-radius: 12px; padding: 20px; margin-bottom: 20px; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5); }
+        .row { display: flex; justify-content: space-between; padding: 12px 8px; border-bottom: 1px solid #334155; align-items: center; }
+        .row:last-child { border-bottom: none; }
+        .label { font-weight: 500; color: #94a3b8; flex: 2; }
+        .value { font-family: "SFMono-Regular", Consolas, monospace; flex: 2; text-align: right; overflow-wrap: break-word; }
+        .status { flex: 1; text-align: right; font-weight: bold; margin-left: 20px; }
+        .pass { color: #10b981; } .fail { color: #ef4444; animation: blink 1.5s infinite; }
+        .warning { color: #f59e0b; }
+        @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+        h2 { color: #38bdf8; font-size: 1.2rem; margin-top: 0; }
+        .summary { font-size: 1.1rem; padding: 15px; border-radius: 8px; text-align: center; }
     </style>
 </head>
 <body>
+    <div class="container">
+        <div class="header">
+            <h1>内核一致性详细报告</h1>
+            <p id="ua-text" style="color: #64748b; font-size: 0.9rem;"></p>
+        </div>
 
-<div class="card">
-    <h1>内核指纹一致性深度报告</h1>
-    
-    <div class="metric">
-        <span class="label">声明身份 (UA):</span>
-        <span id="ua-val" class="value"></span>
+        <div id="final-status" class="summary card">正在分析内核指纹...</div>
+
+        <div class="card">
+            <h2>1. Chrome 对象深度扫描</h2>
+            <div id="section-1"></div>
+        </div>
+
+        <div class="card">
+            <h2>2. 属性描述符 (Descriptor) 验证</h2>
+            <div id="section-2"></div>
+        </div>
+
+        <div class="card">
+            <h2>3. 跨 API 逻辑校验 (内核身份)</h2>
+            <div id="section-3"></div>
+        </div>
     </div>
 
-    <h3>1. 基础存在性检测 (Basic Existence)</h3>
-    <div id="basic-tests"></div>
-
-    <h3>2. 原型链与描述符检测 (Prototype & Descriptor)</h3>
-    <p><small>iOS 真实 Chrome 不应存在任何 Chrome 对象的描述符。</small></p>
-    <div id="descriptor-tests"></div>
-
-    <h3>3. 逻辑冲突扫描 (Cross-Check)</h3>
-    <div id="logic-tests"></div>
-</div>
-
 <script>
-    const $ = (id) => document.getElementById(id);
-    const ua = navigator.userAgent;
-    const isIOS = /iPhone|iPad/.test(ua);
-    $('ua-val').textContent = ua;
+    const isIOSUA = /iPhone|iPad|iPod/.test(navigator.userAgent);
+    document.getElementById('ua-text').innerText = navigator.userAgent;
 
-    function addResult(containerId, label, value, status, expected) {
-        const div = document.createElement('div');
-        div.className = 'metric';
-        div.innerHTML = `
-            <span class="label">${label}:</span>
-            <span class="value">${value}</span>
-            <span class="status ${status === expected ? 'pass' : 'fail'}">
-                ${status === expected ? '✓ 一致' : '✗ 冲突'}
-            </span>
+    function report(section, label, actual, expected, detail = "") {
+        const isPass = String(actual) === String(expected);
+        const container = document.getElementById('section-' + section);
+        const row = document.createElement('div');
+        row.className = 'row';
+        row.innerHTML = `
+            <div class="label">${label}<br><small style="font-size:0.7rem; color:#475569">${detail}</small></div>
+            <div class="value">${actual}</div>
+            <div class="status ${isPass ? 'pass' : 'fail'}">${isPass ? 'PASS' : 'CONFLICT'}</div>
         `;
-        $(containerId).appendChild(div);
+        container.appendChild(row);
+        return isPass;
     }
 
-    // --- 1. 基础检测 ---
-    const typeofChrome = typeof window.chrome;
-    addResult('basic-tests', 'typeof window.chrome', typeofChrome, typeofChrome, isIOS ? 'undefined' : 'object');
+    let results = [];
 
-    const inWindow = "chrome" in window;
-    addResult('basic-tests', '"chrome" in window', inWindow, inWindow, isIOS ? false : true);
+    // --- 断面 1: 存在性 ---
+    results.push(report(1, "typeof window.chrome", typeof window.chrome, isIOSUA ? 'undefined' : 'object', "iOS 环境不应定义 chrome 对象"));
+    results.push(report(1, "'chrome' in window", 'chrome' in window, isIOSUA ? false : true, "检查 Key 是否存在于全局变量列表"));
 
-    // --- 2. 深度描述符检测 ---
-    // 即使你设置 window.chrome = undefined，属性可能依然存在于原型链上
+    // --- 断面 2: 描述符 (这是最容易露馅的地方) ---
     const desc = Object.getOwnPropertyDescriptor(window, 'chrome');
-    const descStatus = desc === undefined ? 'Clean' : 'Dirty';
-    addResult('descriptor-tests', 'Property Descriptor', descStatus, descStatus, 'Clean');
-
+    results.push(report(2, "Descriptor Exists", !!desc, isIOSUA ? false : true, "iOS 绝不应有 chrome 的属性描述符"));
+    
     if (desc) {
-        console.log("检测到残留描述符:", desc);
+        results.push(report(2, "Descriptor Configurable", desc.configurable, false, "原生 Chrome 该属性不可配置，若为 true 则说明是 JS 注入"));
+        results.push(report(2, "Descriptor Enumerable", desc.enumerable, true, "原生 Chrome 该属性是可枚举的"));
+    } else {
+        results.push(report(2, "Clean Context", "Clean", "Clean", "没有检测到残留描述符"));
     }
 
-    // 检测是否为代理对象 (Proxy Detection)
-    let isProxy = false;
-    try {
-        if (window.chrome) {
-            window.chrome.toString();
-        }
-    } catch(e) {
-        if (e.message.includes('Proxy')) isProxy = true;
+    // --- 断面 3: 逻辑冲突 (内核交叉验证) ---
+    
+    // A. 错误堆栈格式 (V8 vs JSC)
+    let stackType = "Unknown";
+    try { null.f(); } catch (e) {
+        stackType = e.stack.includes('at ') ? "V8 (Chromium)" : "JSC (Safari)";
     }
-    addResult('descriptor-tests', 'Is Proxy Object', isProxy, isProxy, false);
+    results.push(report(3, "JS Engine Stack Trace", stackType, isIOSUA ? "JSC (Safari)" : "V8 (Chromium)", "iOS 使用 @，Chromium 使用 at "));
 
-    // --- 3. 逻辑冲突 (内核背叛) ---
-    // 检测只有 Chromium 内核才有的特定 CSS 属性
-    const hasChromiumCSS = CSS.supports('-webkit-app-region', 'drag');
-    addResult('logic-tests', 'Chromium Exclusive CSS', hasChromiumCSS, hasChromiumCSS, isIOS ? false : true);
+    // B. 特有 API 注入
+    const hasInternalApp = !!(window.chrome && window.chrome.app);
+    results.push(report(3, "chrome.app API", hasInternalApp, isIOSUA ? false : true, "检查扩展引擎子 API 是否随之隐藏"));
 
-    // 检测权限 API 差异
-    const hasQueryPermission = !!(navigator.permissions && navigator.permissions.query);
-    addResult('logic-tests', 'Permissions API (Chromium feature)', hasQueryPermission, hasQueryPermission, isIOS ? false : true);
+    // C. CSS 渲染引擎特征
+    const hasWebkitAppRegion = CSS.supports('-webkit-app-region', 'drag');
+    results.push(report(3, "CSS: -webkit-app-region", hasWebkitAppRegion, isIOSUA ? false : true, "这是 Chromium 特有的 CSS 属性"));
 
-    // 检测
+    // 总结报告
+    const finalDiv = document.getElementById('final-status');
+    const allPass = results.every(r => r === true);
+    if (allPass) {
+        finalDiv.innerHTML = "✅ 指纹一致性完美：hasInconsistentChromeObject 将为 false";
+        finalDiv.style.color = "#10b981";
+    } else {
+        finalDiv.innerHTML = "❌ 检测到逻辑冲突：已被标记为 hasInconsistentChromeObject: true";
+        finalDiv.style.color = "#ef4444";
+    }
+</script>
+</body>
+</html>
