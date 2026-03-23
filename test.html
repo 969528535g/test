@@ -1,62 +1,97 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh">
 <head>
     <meta charset="UTF-8">
-    <title>浏览器指纹一致性检测</title>
+    <title>内核指纹深度扫描</title>
     <style>
-        body { font-family: sans-serif; padding: 20px; line-height: 1.6; }
-        .result { padding: 15px; border-radius: 8px; margin-top: 10px; }
-        .fail { background-color: #ffebee; color: #c62828; border: 1px solid #ef9a9a; }
-        .pass { background-color: #e8f5e9; color: #2e7d32; border: 1px solid #a5d6a7; }
-        code { background: #eee; padding: 2px 4px; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f4f7f6; padding: 40px; }
+        .card { background: white; border-radius: 12px; padding: 25px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); max-width: 800px; margin: auto; }
+        h1 { color: #333; font-size: 24px; border-bottom: 2px solid #eee; padding-bottom: 10px; }
+        .metric { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #fafafa; }
+        .label { font-weight: 600; color: #555; }
+        .value { font-family: monospace; color: #007bff; }
+        .status { font-weight: bold; }
+        .fail { color: #d32f2f; }
+        .pass { color: #388e3c; }
+        .warning { color: #f57c00; }
+        pre { background: #272822; color: #f8f8f2; padding: 15px; border-radius: 5px; overflow-x: auto; }
     </style>
 </head>
 <body>
-    <h2>一致性检测: <code>hasInconsistentChromeObject</code></h2>
-    <div id="ua-display"></div>
-    <div id="test-result" class="result">正在检测...</div>
 
-    <script>
-        (function() {
-            const ua = navigator.userAgent;
-            const isIOS = /iPhone|iPad|iPod/.test(ua);
-            const hasChromeObject = window.chrome !== undefined;
-            
-            const uaDisplay = document.getElementById('ua-display');
-            const resultDiv = document.getElementById('test-result');
+<div class="card">
+    <h1>内核指纹一致性深度报告</h1>
+    
+    <div class="metric">
+        <span class="label">声明身份 (UA):</span>
+        <span id="ua-val" class="value"></span>
+    </div>
 
-            uaDisplay.innerHTML = `<p>当前 User-Agent: <br><code>${ua}</code></p>`;
+    <h3>1. 基础存在性检测 (Basic Existence)</h3>
+    <div id="basic-tests"></div>
 
-            // 检测逻辑：
-            // 如果 UA 声明是 iOS 设备，但环境中却存在 window.chrome 对象
-            // 这在逻辑上是矛盾的，判定为 hasInconsistentChromeObject: true
-            if (isIOS && hasChromeObject) {
-                resultDiv.className = 'result fail';
-                resultDiv.innerHTML = `
-                    <strong>检测结果：FAIL (已标记为 Bot)</strong><br>
-                    原因：检测到 <code>hasInconsistentChromeObject: true</code>。<br>
-                    逻辑矛盾：你声称自己是 iOS 设备，但你的全局变量中存在 Chromium 特有的 <code>window.chrome</code> 对象。
-                `;
-                console.error({
-                    isBot: true,
-                    details: { hasInconsistentChromeObject: true }
-                });
-            } else if (!isIOS && !hasChromeObject && /Chrome/.test(ua)) {
-                // 另一种情况：UA 说是桌面 Chrome，但没有 chrome 对象（比如某些极端的 Headless 修改）
-                resultDiv.className = 'result fail';
-                resultDiv.innerHTML = `<strong>检测结果：FAIL</strong><br>UA 声明为 Chrome 但缺失 <code>window.chrome</code>。`;
-            } else {
-                resultDiv.className = 'result pass';
-                resultDiv.innerHTML = `
-                    <strong>检测结果：PASS</strong><br>
-                    环境对象与 User-Agent 声明保持一致。
-                `;
-                console.log({
-                    isBot: false,
-                    details: { hasInconsistentChromeObject: false }
-                });
-            }
-        })();
-    </script>
-</body>
-</html>
+    <h3>2. 原型链与描述符检测 (Prototype & Descriptor)</h3>
+    <p><small>iOS 真实 Chrome 不应存在任何 Chrome 对象的描述符。</small></p>
+    <div id="descriptor-tests"></div>
+
+    <h3>3. 逻辑冲突扫描 (Cross-Check)</h3>
+    <div id="logic-tests"></div>
+</div>
+
+<script>
+    const $ = (id) => document.getElementById(id);
+    const ua = navigator.userAgent;
+    const isIOS = /iPhone|iPad/.test(ua);
+    $('ua-val').textContent = ua;
+
+    function addResult(containerId, label, value, status, expected) {
+        const div = document.createElement('div');
+        div.className = 'metric';
+        div.innerHTML = `
+            <span class="label">${label}:</span>
+            <span class="value">${value}</span>
+            <span class="status ${status === expected ? 'pass' : 'fail'}">
+                ${status === expected ? '✓ 一致' : '✗ 冲突'}
+            </span>
+        `;
+        $(containerId).appendChild(div);
+    }
+
+    // --- 1. 基础检测 ---
+    const typeofChrome = typeof window.chrome;
+    addResult('basic-tests', 'typeof window.chrome', typeofChrome, typeofChrome, isIOS ? 'undefined' : 'object');
+
+    const inWindow = "chrome" in window;
+    addResult('basic-tests', '"chrome" in window', inWindow, inWindow, isIOS ? false : true);
+
+    // --- 2. 深度描述符检测 ---
+    // 即使你设置 window.chrome = undefined，属性可能依然存在于原型链上
+    const desc = Object.getOwnPropertyDescriptor(window, 'chrome');
+    const descStatus = desc === undefined ? 'Clean' : 'Dirty';
+    addResult('descriptor-tests', 'Property Descriptor', descStatus, descStatus, 'Clean');
+
+    if (desc) {
+        console.log("检测到残留描述符:", desc);
+    }
+
+    // 检测是否为代理对象 (Proxy Detection)
+    let isProxy = false;
+    try {
+        if (window.chrome) {
+            window.chrome.toString();
+        }
+    } catch(e) {
+        if (e.message.includes('Proxy')) isProxy = true;
+    }
+    addResult('descriptor-tests', 'Is Proxy Object', isProxy, isProxy, false);
+
+    // --- 3. 逻辑冲突 (内核背叛) ---
+    // 检测只有 Chromium 内核才有的特定 CSS 属性
+    const hasChromiumCSS = CSS.supports('-webkit-app-region', 'drag');
+    addResult('logic-tests', 'Chromium Exclusive CSS', hasChromiumCSS, hasChromiumCSS, isIOS ? false : true);
+
+    // 检测权限 API 差异
+    const hasQueryPermission = !!(navigator.permissions && navigator.permissions.query);
+    addResult('logic-tests', 'Permissions API (Chromium feature)', hasQueryPermission, hasQueryPermission, isIOS ? false : true);
+
+    // 检测
