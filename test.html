@@ -2,147 +2,61 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>ALIDOA 深度环境审计 - 模拟 Google 风控</title>
+    <title>浏览器指纹一致性检测</title>
     <style>
-        body { font-family: sans-serif; background: #f4f4f9; padding: 20px; }
-        .card { background: white; border-radius: 8px; padding: 15px; margin-bottom: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        h2 { border-bottom: 2px solid #eee; padding-bottom: 10px; color: #333; }
-        .item { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #fafafa; }
-        .label { font-weight: bold; color: #555; }
-        .pass { color: #2ecc71; font-weight: bold; }
-        .fail { color: #e74c3c; font-weight: bold; }
-        .warn { color: #f39c12; font-weight: bold; }
-        pre { background: #272822; color: #f8f8f2; padding: 10px; border-radius: 5px; overflow-x: auto; }
+        body { font-family: sans-serif; padding: 20px; line-height: 1.6; }
+        .result { padding: 15px; border-radius: 8px; margin-top: 10px; }
+        .fail { background-color: #ffebee; color: #c62828; border: 1px solid #ef9a9a; }
+        .pass { background-color: #e8f5e9; color: #2e7d32; border: 1px solid #a5d6a7; }
+        code { background: #eee; padding: 2px 4px; }
     </style>
 </head>
 <body>
-
-    <h1>ALIDOA 内核伪装审计 (模拟 Botguard)</h1>
-    <p>当前 IP: <span id="user-ip">正在获取...</span></p>
-
-    <div class="card">
-        <h2>1. V8 引擎底层特征 (Engine Fingerprint)</h2>
-        <div class="item">
-            <span class="label">报错字符串格式 (null[0]):</span>
-            <span id="v8-msg">检测中...</span>
-        </div>
-        <div class="item">
-            <span class="label">堆栈 "at" 关键字 (Stack Trace):</span>
-            <span id="v8-stack">检测中...</span>
-        </div>
-        <div class="item">
-            <span class="label">V8 浮点数精度 (Math.sin):</span>
-            <span id="v8-math">检测中...</span>
-        </div>
-    </div>
-
-    <div class="card">
-        <h2>2. 浏览器 API 一致性 (iOS 18.7.6 对齐)</h2>
-        <div class="item">
-            <span class="label">SharedWorker 支持:</span>
-            <span id="api-sharedworker">检测中...</span>
-        </div>
-        <div class="item">
-            <span class="label">window.chrome 对象:</span>
-            <span id="api-chrome">检测中...</span>
-        </div>
-        <div class="item">
-            <span class="label">WebM/VP9 解码器:</span>
-            <span id="api-webm">检测中...</span>
-        </div>
-    </div>
-
-    <div class="card">
-        <h2>3. 渲染与硬件指纹 (Hardware Fingerprint)</h2>
-        <canvas id="canvas-test" width="200" height="40" style="display:none;"></canvas>
-        <div class="item">
-            <span class="label">Canvas 渲染哈希:</span>
-            <span id="hw-canvas" style="font-size: 0.8em;">检测中...</span>
-        </div>
-        <div class="item">
-            <span class="label">WebGL Vendor/Renderer:</span>
-            <span id="hw-webgl">检测中...</span>
-        </div>
-    </div>
+    <h2>一致性检测: <code>hasInconsistentChromeObject</code></h2>
+    <div id="ua-display"></div>
+    <div id="test-result" class="result">正在检测...</div>
 
     <script>
-        function updateStatus(id, text, status) {
-            const el = document.getElementById(id);
-            el.innerText = text;
-            el.className = status;
-        }
-
-        // --- 1. V8 引擎检测 ---
-        try {
-            null[0];
-        } catch (e) {
-            const msg = e.message;
-            const stack = e.stack;
+        (function() {
+            const ua = navigator.userAgent;
+            const isIOS = /iPhone|iPad|iPod/.test(ua);
+            const hasChromeObject = window.chrome !== undefined;
             
-            // 检测报错字符串
-            if (msg.includes("is not an object")) {
-                updateStatus('v8-msg', 'WebKit 风格 (PASS)', 'pass');
+            const uaDisplay = document.getElementById('ua-display');
+            const resultDiv = document.getElementById('test-result');
+
+            uaDisplay.innerHTML = `<p>当前 User-Agent: <br><code>${ua}</code></p>`;
+
+            // 检测逻辑：
+            // 如果 UA 声明是 iOS 设备，但环境中却存在 window.chrome 对象
+            // 这在逻辑上是矛盾的，判定为 hasInconsistentChromeObject: true
+            if (isIOS && hasChromeObject) {
+                resultDiv.className = 'result fail';
+                resultDiv.innerHTML = `
+                    <strong>检测结果：FAIL (已标记为 Bot)</strong><br>
+                    原因：检测到 <code>hasInconsistentChromeObject: true</code>。<br>
+                    逻辑矛盾：你声称自己是 iOS 设备，但你的全局变量中存在 Chromium 特有的 <code>window.chrome</code> 对象。
+                `;
+                console.error({
+                    isBot: true,
+                    details: { hasInconsistentChromeObject: true }
+                });
+            } else if (!isIOS && !hasChromeObject && /Chrome/.test(ua)) {
+                // 另一种情况：UA 说是桌面 Chrome，但没有 chrome 对象（比如某些极端的 Headless 修改）
+                resultDiv.className = 'result fail';
+                resultDiv.innerHTML = `<strong>检测结果：FAIL</strong><br>UA 声明为 Chrome 但缺失 <code>window.chrome</code>。`;
             } else {
-                updateStatus('v8-msg', 'V8 风格 (FAIL: ' + msg + ')', 'fail');
+                resultDiv.className = 'result pass';
+                resultDiv.innerHTML = `
+                    <strong>检测结果：PASS</strong><br>
+                    环境对象与 User-Agent 声明保持一致。
+                `;
+                console.log({
+                    isBot: false,
+                    details: { hasInconsistentChromeObject: false }
+                });
             }
-
-            // 检测堆栈关键字
-            if (stack.includes("    at ")) {
-                updateStatus('v8-stack', '发现 "at" (FAIL: Android 特征)', 'fail');
-            } else {
-                updateStatus('v8-stack', '无 "at" (PASS: iOS 风格)', 'pass');
-            }
-        }
-
-        // 浮点数精度测试 (iOS ARM64 vs Android ARM64 极细微差别)
-        const mathVal = Math.sin(3.141592653589793);
-        updateStatus('v8-math', mathVal.toString(), 'warn');
-
-        // --- 2. API 一致性 ---
-        
-        // SharedWorker (你刚在 JSON5 修改的项)
-        if (typeof SharedWorker !== 'undefined') {
-            updateStatus('api-sharedworker', '支持 (PASS)', 'pass');
-        } else {
-            updateStatus('api-sharedworker', '不支持 (FAIL: Android 默认)', 'fail');
-        }
-
-        // window.chrome (iOS Chrome 不应存在该对象)
-        if (window.chrome && window.chrome.runtime) {
-            updateStatus('api-chrome', '存在 (FAIL: 泄露 Chrome 特征)', 'fail');
-        } else {
-            updateStatus('api-chrome', '不存在 (PASS)', 'pass');
-        }
-
-        // WebM 支持 (你确认过 iOS 真机支持)
-        const video = document.createElement('video');
-        const webm = video.canPlayType('video/webm; codecs="vp9"');
-        updateStatus('api-webm', webm || '不支持', webm ? 'pass' : 'fail');
-
-        // --- 3. 硬件指纹 ---
-        
-        // Canvas Fingerprint
-        const canvas = document.getElementById('canvas-test');
-        const ctx = canvas.getContext('2d');
-        ctx.textBaseline = "top";
-        ctx.font = "14px 'Arial'";
-        ctx.fillText("ALIDOA-Audit-😃-123", 2, 2);
-        const canvasHash = btoa(canvas.toDataURL()).substring(100, 130);
-        updateStatus('hw-canvas', canvasHash + '...', 'warn');
-
-        // WebGL
-        const gl = document.createElement('canvas').getContext('webgl');
-        if (gl) {
-            const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
-            const renderer = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
-            updateStatus('hw-webgl', renderer, renderer.includes('Apple') ? 'pass' : 'warn');
-        }
-
-        // 获取 IP (模拟 Botguard 上报)
-        fetch('https://api.ipify.org?format=json')
-            .then(r => r.json())
-            .then(data => document.getElementById('user-ip').innerText = data.ip);
-
+        })();
     </script>
 </body>
 </html>
