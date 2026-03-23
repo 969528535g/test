@@ -2,96 +2,71 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>Chrome 对象一致性检测</title>
+    <title>iOS 伪装一致性最终检查</title>
     <style>
-        body { font-family: sans-serif; background: #f0f2f5; padding: 20px; color: #333; }
-        .card { background: white; border-radius: 10px; padding: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); max-width: 700px; margin: auto; }
-        .test-item { display: flex; justify-content: space-between; padding: 12px; border-bottom: 1px solid #eee; }
-        .label { font-weight: bold; }
-        .value { font-family: monospace; }
-        .pass { color: #52c41a; font-weight: bold; }
-        .fail { color: #f5222d; font-weight: bold; }
-        h2 { color: #1890ff; border-bottom: 2px solid #1890ff; padding-bottom: 5px; }
-        pre { background: #fafafa; padding: 10px; font-size: 12px; border: 1px solid #ddd; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f4f4f9; padding: 20px; }
+        .container { max-width: 600px; margin: 0 auto; background: #fff; padding: 20px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+        h2 { border-bottom: 2px solid #007aff; padding-bottom: 10px; color: #1d1d1f; }
+        .row { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #eee; }
+        .label { font-weight: 600; color: #444; }
+        .value { font-family: "SF Mono", "Menlo", monospace; font-size: 14px; }
+        .status { margin-left: 10px; font-weight: bold; }
+        .pass { color: #28a745; }
+        .fail { color: #dc3545; }
+        .warning { background: #fff3cd; padding: 15px; border-radius: 8px; margin-top: 20px; font-size: 13px; line-height: 1.6; }
     </style>
 </head>
 <body>
 
-<div class="card">
-    <h2>Chromium 身份特征扫描</h2>
-    <p>当前 UA: <small id="ua"></small></p>
+<div class="container">
+    <h2>iOS 环境对齐检查</h2>
+    
+    <div id="results"></div>
 
-    <div class="test-item">
-        <span class="label">1. typeof window.chrome</span>
-        <span id="res-1" class="value"></span>
+    <div class="warning">
+        <strong>💡 诊断指南：</strong><br>
+        1. <b>vendor:</b> 如果不是 <u>Apple Computer, Inc.</u>，`isBot` 必红。<br>
+        2. <b>appRegion:</b> 如果是 <u>true</u>，说明 Chromium 特有的拖拽功能泄露了。<br>
+        3. <b>uaData:</b> 如果是 <u>true</u>，说明 Client Hints 没关掉，这是 Chromium 的铁证。
     </div>
-
-    <div class="test-item">
-        <span class="label">2. "chrome" in window</span>
-        <span id="res-2" class="value"></span>
-    </div>
-
-    <div class="test-item">
-        <span class="label">3. Property Descriptor</span>
-        <span id="res-3" class="value"></span>
-    </div>
-
-    <div class="test-item">
-        <span class="label">4. Object.keys(window) 包含</span>
-        <span id="res-4" class="value"></span>
-    </div>
-
-    <h2>诊断结论</h2>
-    <pre id="diagnosis">检测中...</pre>
 </div>
 
 <script>
-    const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
-    document.getElementById('ua').textContent = navigator.userAgent;
+    const target = {
+        vendor: "Apple Computer, Inc.",
+        platform: "iPhone", // 或者是 iPad
+        appRegion: false,
+        uaData: false
+    };
 
-    function update(id, value, isPass) {
-        const el = document.getElementById(id);
-        el.textContent = value;
-        el.className = isPass ? 'value pass' : 'value fail';
+    const current = {
+        vendor: navigator.vendor,
+        platform: navigator.platform,
+        appRegion: CSS.supports('-webkit-app-region', 'drag'),
+        uaData: !!navigator.userAgentData
+    };
+
+    const resultsDiv = document.getElementById('results');
+
+    for (let key in current) {
+        const val = current[key];
+        const isPass = val === target[key];
+        
+        const row = document.createElement('div');
+        row.className = 'row';
+        row.innerHTML = `
+            <span class="label">${key}:</span>
+            <span class="value">
+                ${val}
+                <span class="status ${isPass ? 'pass' : 'fail'}">
+                    ${isPass ? '● 一致' : '● 冲突'}
+                </span>
+            </span>
+        `;
+        resultsDiv.appendChild(row);
     }
 
-    // --- 验证逻辑 ---
-
-    // 1. 类型检查
-    const type = typeof window.chrome;
-    // iOS 期望值：undefined
-    update('res-1', type, isIOS ? type === 'undefined' : type === 'object');
-
-    // 2. 键名检查 (即使设为 undefined，in 依然可能返回 true)
-    const hasIn = "chrome" in window;
-    // iOS 期望值：false
-    update('res-2', hasIn, isIOS ? hasIn === false : hasIn === true);
-
-    // 3. 描述符检查 (底层拦截是否彻底)
-    const desc = Object.getOwnPropertyDescriptor(window, 'chrome');
-    const descStr = desc ? 'Found' : 'None';
-    // iOS 期望值：None (因为 iOS 根本没这个属性)
-    update('res-3', descStr, isIOS ? descStr === 'None' : descStr === 'Found');
-
-    // 4. 枚举检查
-    const keys = Object.keys(window);
-    const hasKey = keys.includes('chrome');
-    // iOS 期望值：false
-    update('res-4', hasKey ? 'Yes' : 'No', isIOS ? hasKey === false : hasKey === true);
-
-    // --- 诊断建议 ---
-    const diagnosis = document.getElementById('diagnosis');
-    if (isIOS) {
-        if (hasIn || descStr === 'Found') {
-            diagnosis.textContent = "❌ 警告：检测到属性残留！\n" + 
-                "原因：你虽然在 JS 里隐藏了它，但 window 对象上依然保留了 'chrome' 这个 Key。\n" +
-                "解决方案：必须在 C++ 源码中停止注入，而不是在 JS 里赋值为 undefined。";
-        } else {
-            diagnosis.textContent = "✅ 恭喜：window.chrome 已彻底抹除，逻辑与真机一致。";
-        }
-    } else {
-        diagnosis.textContent = "当前处于标准 Chromium 模式，chrome 对象正常存在。";
-    }
+    console.log("Full Report:", current);
 </script>
 </body>
 </html>
