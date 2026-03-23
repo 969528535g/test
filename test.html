@@ -2,71 +2,77 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>iOS 伪装一致性最终检查</title>
+    <title>Chromium 深层特征残留扫描</title>
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f4f4f9; padding: 20px; }
-        .container { max-width: 600px; margin: 0 auto; background: #fff; padding: 20px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
-        h2 { border-bottom: 2px solid #007aff; padding-bottom: 10px; color: #1d1d1f; }
-        .row { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #eee; }
-        .label { font-weight: 600; color: #444; }
-        .value { font-family: "SF Mono", "Menlo", monospace; font-size: 14px; }
-        .status { margin-left: 10px; font-weight: bold; }
-        .pass { color: #28a745; }
-        .fail { color: #dc3545; }
-        .warning { background: #fff3cd; padding: 15px; border-radius: 8px; margin-top: 20px; font-size: 13px; line-height: 1.6; }
+        body { font-family: -apple-system, system-ui, sans-serif; background: #121212; color: #e0e0e0; padding: 30px; }
+        .card { background: #1e1e1e; border-radius: 12px; padding: 25px; box-shadow: 0 8px 30px rgba(0,0,0,0.5); max-width: 800px; margin: auto; border: 1px solid #333; }
+        h2 { color: #007aff; margin-top: 0; border-bottom: 1px solid #333; padding-bottom: 10px; }
+        .item { padding: 15px; margin: 10px 0; border-radius: 8px; background: #252525; display: flex; justify-content: space-between; align-items: center; }
+        .danger { border-left: 5px solid #ff453a; color: #ff453a; }
+        .success { border-left: 5px solid #32d74b; color: #32d74b; }
+        .label { font-weight: bold; font-family: monospace; }
+        .status-text { font-size: 0.9em; font-weight: bold; }
+        .summary { margin-top: 20px; padding: 15px; border-radius: 8px; font-size: 14px; line-height: 1.6; }
+        .alert { background: rgba(255, 69, 58, 0.1); border: 1px solid #ff453a; color: #ff453a; }
+        .clean { background: rgba(50, 215, 75, 0.1); border: 1px solid #32d74b; color: #32d74b; }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <h2>iOS 环境对齐检查</h2>
-    
-    <div id="results"></div>
-
-    <div class="warning">
-        <strong>💡 诊断指南：</strong><br>
-        1. <b>vendor:</b> 如果不是 <u>Apple Computer, Inc.</u>，`isBot` 必红。<br>
-        2. <b>appRegion:</b> 如果是 <u>true</u>，说明 Chromium 特有的拖拽功能泄露了。<br>
-        3. <b>uaData:</b> 如果是 <u>true</u>，说明 Client Hints 没关掉，这是 Chromium 的铁证。
-    </div>
+<div class="card">
+    <h2>深度指纹残留扫描 (Chromium 138)</h2>
+    <div id="scan-results"></div>
+    <div id="final-summary" class="summary"></div>
 </div>
 
 <script>
-    const target = {
-        vendor: "Apple Computer, Inc.",
-        platform: "iPhone", // 或者是 iPad
-        appRegion: false,
-        uaData: false
-    };
+    const scanContainer = document.getElementById('scan-results');
+    const summaryContainer = document.getElementById('final-summary');
+    const inconsistencies = [];
 
-    const current = {
-        vendor: navigator.vendor,
-        platform: navigator.platform,
-        appRegion: CSS.supports('-webkit-app-region', 'drag'),
-        uaData: !!navigator.userAgentData
-    };
-
-    const resultsDiv = document.getElementById('results');
-
-    for (let key in current) {
-        const val = current[key];
-        const isPass = val === target[key];
-        
-        const row = document.createElement('div');
-        row.className = 'row';
-        row.innerHTML = `
-            <span class="label">${key}:</span>
-            <span class="value">
-                ${val}
-                <span class="status ${isPass ? 'pass' : 'fail'}">
-                    ${isPass ? '● 一致' : '● 冲突'}
-                </span>
-            </span>
+    function addResult(label, isVulnerable, detail) {
+        const div = document.createElement('div');
+        div.className = `item ${isVulnerable ? 'danger' : 'success'}`;
+        div.innerHTML = `
+            <span class="label">${label}</span>
+            <span class="status-text">${isVulnerable ? '⚠️ 发现残留' : '✅ 已抹除'}</span>
         `;
-        resultsDiv.appendChild(row);
+        scanContainer.appendChild(div);
+        if (isVulnerable) inconsistencies.push(detail);
     }
 
-    console.log("Full Report:", current);
+    // 1. 检查 V8 特有 API (Intl 泄漏)
+    addResult("Intl.v8BreakIterator", ("v8BreakIterator" in Intl), "V8 特有断句器接口");
+
+    // 2. 检查已删除但残留的 chrome key (反射扫描)
+    const chromeKeyInWindow = Object.getOwnPropertyNames(window).includes('chrome');
+    addResult("window.chrome (PropertyNames)", chromeKeyInWindow, "window 对象仍保留 chrome 键位名");
+
+    // 3. 检查外部对象 (window.external)
+    let externalLeak = false;
+    if (window.external && window.external.toString() === '[object External]') {
+        if (Object.keys(window.external).length > 0) externalLeak = true;
+    }
+    addResult("window.external", externalLeak, "window.external 包含非标方法");
+
+    // 4. 检查 WebGL 调试扩展 (显卡暴露)
+    const gl = document.createElement('canvas').getContext('webgl');
+    const ext = gl ? gl.getSupportedExtensions() : [];
+    const hasDebugExt = ext.includes('WEBGL_debug_renderer_info');
+    addResult("WEBGL_debug_renderer_info", hasDebugExt, "暴露了 WebGL 调试信息扩展");
+
+    // 5. 检查 Chrome Runtime 对象痕迹 (针对隐藏后的残留)
+    const chromeRuntimeLeak = (window.chrome && window.chrome.runtime);
+    addResult("window.chrome.runtime", !!chromeRuntimeLeak, "隐藏不彻底，runtime 子对象仍可访问");
+
+    // 输出最终总结
+    if (inconsistencies.length > 0) {
+        summaryContainer.className = "summary alert";
+        summaryContainer.innerHTML = `<strong>检测到 ${inconsistencies.length} 项冲突：</strong><br>• ${inconsistencies.join('<br>• ')}<br><br>这就是 <i>hasInconsistentChromeObject</i> 报错的原因。`;
+    } else {
+        summaryContainer.className = "summary clean";
+        summaryContainer.innerHTML = "<strong>完美！</strong> 未发现明显的底层特征残留。如果检测依然报红，请检查 TLS/JA3 指纹或 HTTP2 优先级特征。";
+    }
 </script>
 </body>
 </html>
