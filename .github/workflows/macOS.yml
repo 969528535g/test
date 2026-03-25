@@ -1,15 +1,23 @@
-jobs:
-  build-chromium:
-    runs-on: macos-14 # 必须用 Apple Silicon (M1/M2) Runner，速度快且内存大
-    steps:
-      - name: Free Disk Space
-        run: |
-          sudo rm -rf /Applications/Xcode_14.*.app # 删除旧版 Xcode
-          sudo rm -rf /usr/local/share/dotnet
-          sudo rm -rf /usr/local/lib/android
-          df -h
+name: GitHub Actions Demo
+run-name: ${{ github.actor }} is testing out GitHub Actions 🚀
 
-      - name: Install depot_tools
+on:
+  push:
+    branches: [ "main" ]  # 仅在 main 分支推送时触发
+  pull_request:
+    branches: [ "main" ]  # 提交 PR 到 main 时触发
+  workflow_dispatch:      # 允许手动在 Actions 页面触发（调试 Chromium 必备）
+
+jobs:
+  Explore-GitHub-Actions:
+    # 注意：编译 Chromium iOS 必须使用 macos-14，ubuntu 无法完成
+    runs-on: macos-14 
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v4
+
+      - name: Environment Info
         run: |
-          git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git
-          echo "$GITHUB_WORKSPACE/depot_tools" >> $GITHUB_PATH
+          echo "🎉 Event: ${{ github.event_name }}"
+          echo "🖥️ Runner OS: ${{ runner.os }}"
+          xcodebuild -version # 检查 macOS Runner 的 Xcode 版本
