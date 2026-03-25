@@ -1,18 +1,18 @@
-name: GitHub Actions Demo
-run-name: ${{ github.actor }} is testing out GitHub Actions 🚀
-on: [push]
+name: Build Chromium 140 iOS
+on:
+  workflow_dispatch: # 建议手动触发，因为编译一次非常昂贵
+
 jobs:
-  Explore-GitHub-Actions:
-    runs-on: ubuntu-latest
+  Chromium-Build:
+    runs-on: macos-14
+    timeout-minutes: 360 # 延长至 6 小时
     steps:
-      - run: echo "🎉 The job was automatically triggered by a ${{ github.event_name }} event."
-      - run: echo "🐧 This job is now running on a ${{ runner.os }} server hosted by GitHub!"
-      - run: echo "🔎 The name of your branch is ${{ github.ref }} and your repository is ${{ github.repository }}."
-      - name: Check out repository code
-        uses: actions/checkout@v5
-      - run: echo "💡 The ${{ github.repository }} repository has been cloned to the runner."
-      - run: echo "🖥️ The workflow is now ready to test your code on the runner."
-      - name: List files in the repository
+      - name: Maximize Disk Space
         run: |
-          ls ${{ github.workspace }}
-      - run: echo "🍏 This job's status is ${{ job.status }}."
+          echo "Before cleaning:"
+          df -h
+          # 删除不需要的预装软件
+          sudo rm -rf /Applications/Xcode_13* /Applications/Xcode_14*
+          sudo rm -rf /opt/homebrew/Caskroom/google-cloud-sdk
+          echo "After cleaning:"
+          df -h
