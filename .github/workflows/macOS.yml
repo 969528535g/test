@@ -1,36 +1,53 @@
 name: Build Chromium 140 iOS
-run-name: ${{ github.actor }} is building Chromium 140.0.7339.208 🚀
+run-name: ${{ github.actor }} - Chromium 140.0.7339.208 🚀
 
 on:
-  workflow_dispatch: # 强烈建议手动触发，避免频繁自动运行导致额度扣光
+  workflow_dispatch: # 手动触发，避免产生不必要的账单
+
+# 全局环境变量，解决 Node.js 20 警告并设置工具路径
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  DEPOT_TOOLS_WIN_TOOLCHAIN: 0
 
 jobs:
-  Build-Chromium:
-    runs-on: macos-14 # 使用 Apple Silicon (M1/M2) 提升编译速度
-    timeout-minutes: 360 # GitHub 允许的最大时长 6 小时
+  build-chromium:
+    runs-on: macos-14 # 必须使用 Apple Silicon (M1/M2) 节点
+    timeout-minutes: 360 # 6小时上限
     
     steps:
-      # 1. 环境清理：这是在 GitHub Runner 上编译 Chromium 的命门
+      # 1. 环境初始化与版本检查
+      - name: Environment Setup
+        run: |
+          echo "Xcode Version:"
+          xcodebuild -version
+          echo "Disk Space Before Cleanup:"
+          df -h
+
+      # 2. 深度清理磁盘（Chromium 编译成败的关键）
       - name: Maximize Disk Space
         run: |
-          echo "清理前空间："
-          df -h
+          # 删除不需要的预装 SDK 和旧版 Xcode，腾出约 20GB 空间
           sudo rm -rf /Applications/Xcode_13* /Applications/Xcode_14*
           sudo rm -rf /usr/local/lib/android
           sudo rm -rf /usr/local/share/dotnet
-          echo "清理后空间："
+          sudo rm -rf /Library/Frameworks/Mono.framework
+          echo "Disk Space After Cleanup:"
           df -h
 
-      # 2. 安装 Google 专用工具链 depot_tools
-      - name: Setup depot_tools
+      # 3. 检出当前仓库（用于存储脚本，使用 v5 避免警告）
+      - name: Checkout Repo
+        uses: actions/checkout@v5
+
+      # 4. 安装 depot_tools
+      - name: Install depot_tools
         run: |
           git clone --depth 1 https://chromium.googlesource.com/chromium/tools/depot_tools.git
           echo "$GITHUB_WORKSPACE/depot_tools" >> $GITHUB_PATH
 
-      # 3. 初始化并同步源码 (针对 iOS 140.0.7339.208)
-      - name: Fetch and Sync Source
+      # 5. 拉取 Chromium 源码 (针对 140.0.7339.208)
+      - name: Fetch Chromium Source
         run: |
-          # 创建 .gclient 配置文件
+          # 配置 gclient 仅针对 iOS
           cat <<EOF > .gclient
           solutions = [
             {
@@ -44,24 +61,23 @@ jobs:
           target_os = ["ios"]
           EOF
 
-          # 仅同步指定版本，且不拉取 Git 历史记录以节省空间
+          # --no-history 极其重要，否则磁盘会瞬间爆满
           fetch --no-history --nohooks ios
           cd src
+          # 精确切换到你的版本号
           git fetch origin tag 140.0.7339.208 --no-tags
           git checkout tags/140.0.7339.208
           
-          # 同步依赖（此步最耗时，建议在日志中观察进度）
+          # 执行依赖同步
           gclient sync -D --force --reset --nohooks
 
-      # 4. 执行 Hooks 并生成构建配置
-      - name: GN Gen
+      # 6. 配置 GN 参数 (针对你的需求定制)
+      - name: GN Generate
         run: |
           cd src
           gclient runhooks
           
-          # 核心参数配置：
-          # 注意：为了确保真机可用，target_cpu 设为 arm64
-          # 为了保证 CI 成功率，is_official_build 暂时设为 false
+          # 核心编译参数注入
           gn gen out/Release-iphoneos --args='
             target_os="ios"
             target_cpu="arm64"
@@ -82,20 +98,19 @@ jobs:
             ios_enable_code_signing=false
           '
 
-      # 5. 开始编译核心目标
-      - name: Compile Chromium
+      # 7. 开始编译 (使用 autoninja 自动分配算力)
+      - name: Compile
         run: |
           cd src
-          # autoninja 会自动根据 CPU 核心数调整并发
           autoninja -C out/Release-iphoneos chrome
 
-      # 6. 上传编译产物 (Artifacts)
-      - name: Upload Build Result
-        uses: actions/upload-artifact@v4
-        if: always() # 即使编译中途失败，也尝试上传已生成的日志或文件
+      # 8. 上传产物 (使用 v5 避免警告)
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v5
+        if: always()
         with:
-          name: Chromium-iOS-140-Artifacts
+          name: Chromium-iOS-140-App
           path: |
             src/out/Release-iphoneos/*.app
             src/out/Release-iphoneos/*.ipa
-          retention-days: 3 # 仅保留 3 天，节省你的存储配额
+          retention-days: 3
