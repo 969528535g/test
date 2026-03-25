@@ -1,15 +1,1 @@
-jobs:
-  build-chromium:
-    runs-on: macos-14 # 必须用 Apple Silicon (M1/M2) Runner，速度快且内存大
-    steps:
-      - name: Free Disk Space
-        run: |
-          sudo rm -rf /Applications/Xcode_14.*.app # 删除旧版 Xcode
-          sudo rm -rf /usr/local/share/dotnet
-          sudo rm -rf /usr/local/lib/android
-          df -h
 
-      - name: Install depot_tools
-        run: |
-          git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git
-          echo "$GITHUB_WORKSPACE/depot_tools" >> $GITHUB_PATH
