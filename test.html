@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>时区检测工具 | 精准获取本地时区信息</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: linear-gradient(145deg, #f0f4fa 0%, #d9e0eb 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Segoe UI', 'Roboto', 'Inter', system-ui, -apple-system, 'BlinkMacSystemFont', sans-serif;
+            padding: 20px;
+        }
+
+        /* 卡片容器 */
+        .card {
+            max-width: 800px;
+            width: 100%;
+            background: rgba(255, 255, 255, 0.96);
+            backdrop-filter: blur(0px);
+            border-radius: 48px;
+            box-shadow: 0 25px 45px -12px rgba(0, 0, 0, 0.3), 0 4px 12px rgba(0, 0, 0, 0.05);
+            overflow: hidden;
+            transition: all 0.2s ease;
+            border: 1px solid rgba(255, 255, 255, 0.5);
+        }
+
+        /* 头部样式 */
+        .header {
+            background: #1e2a3e;
+            padding: 28px 32px;
+            color: white;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 1.9rem;
+            font-weight: 600;
+            letter-spacing: -0.3px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .header h1 span {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 6px 14px;
+            border-radius: 60px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            font-family: monospace;
+        }
+
+        .sub {
+            margin-top: 12px;
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+
+        /* 主要内容区 */
+        .content {
+            padding: 32px 28px 40px;
+        }
+
+        /* 信息卡片组 */
+        .info-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+            margin-bottom: 32px;
+        }
+
+        .info-item {
+            background: #f8fafc;
+            border-radius: 28px;
+            padding: 6px 0 6px 0;
+            transition: transform 0.1s ease;
+            border: 1px solid #e2edf2;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.02);
+        }
+
+        .info-label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            font-weight: 700;
+            color: #4b6a8b;
+            padding: 12px 24px 4px 24px;
+        }
+
+        .info-value {
+            font-size: 1.55rem;
+            font-weight: 600;
+            padding: 6px 24px 20px 24px;
+            color: #0a1c2f;
+            word-break: break-word;
+            font-family: 'SF Mono', 'Fira Code', monospace;
+        }
+
+        /* 特殊高亮 */
+        .timezone-full {
+            background: linear-gradient(135deg, #eef2ff, #ffffff);
+            border-left: 6px solid #3b82f6;
+        }
+
+        .offset-badge {
+            background: #e6f0ff;
+            display: inline-block;
+            padding: 4px 14px;
+            border-radius: 60px;
+            font-size: 1.2rem;
+            font-weight: 500;
+        }
+
+        /* 实时时钟区域 */
+        .live-clock {
+            background: #1e293b;
+            border-radius: 28px;
+            padding: 20px 24px;
+            margin-top: 8px;
+            margin-bottom: 24px;
+            color: white;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .clock-title {
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            font-weight: 500;
+            color: #94a3b8;
+            margin-bottom: 12px;
+        }
+
+        .clock-time {
+            font-size: 2.6rem;
+            font-weight: 700;
+            font-family: monospace;
+            letter-spacing: 2px;
+            display: flex;
+            align-items: baseline;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .clock-date {
+            font-size: 1rem;
+            font-weight: 400;
+            color: #cbd5e6;
+            margin-top: 8px;
+        }
+
+        /* 额外技术细节 */
+        .raw-details {
+            background: #f1f5f9;
+            border-radius: 24px;
+            padding: 20px 24px;
+            font-family: monospace;
+            font-size: 0.85rem;
+            border: 1px solid #e0e9f0;
+            margin-top: 12px;
+        }
+
+        .raw-title {
+            font-weight: 700;
+            color: #2c3e50;
+            margin-bottom: 12px;
+            font-size: 0.8rem;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        .raw-content {
+            color: #1e2a3a;
+            background: #ffffffd9;
+            padding: 12px 16px;
+            border-radius: 18px;
+            overflow-x: auto;
+            white-space: pre-wrap;
+            word-break: break-all;
+            font-size: 0.8rem;
+        }
+
+        button {
+            background: #2c3e66;
+            border: none;
+            color: white;
+            padding: 12px 24px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            border-radius: 40px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-top: 8px;
+            width: 100%;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        button:hover {
+            background: #1e2f4b;
+            transform: scale(0.98);
+        }
+
+        footer {
+            text-align: center;
+            font-size: 0.7rem;
+            padding: 20px 24px 24px;
+            color: #5c6f87;
+            border-top: 1px solid #e9edf2;
+            background: #ffffffd0;
+        }
+
+        @media (max-width: 550px) {
+            .content {
+                padding: 24px 18px;
+            }
+            .info-value {
+                font-size: 1.25rem;
+                padding: 4px 20px 16px 20px;
+            }
+            .clock-time {
+                font-size: 1.8rem;
+            }
+            .header h1 {
+                font-size: 1.4rem;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <div class="header">
+        <h1>
+            🌍 时区检测器
+            <span>TimeZone API</span>
+        </h1>
+        <div class="sub">基于 JavaScript Intl 与 浏览器时区数据 · 完全本地检测</div>
+    </div>
+
+    <div class="content">
+        <!-- 主要信息网格 -->
+        <div class="info-grid">
+            <div class="info-item">
+                <div class="info-label">🕒 IANA 时区名称</div>
+                <div class="info-value" id="tzName">加载中...</div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">⏱️ UTC 偏移量 (当前)</div>
+                <div class="info-value" id="tzOffset">--</div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">🏷️ 时区缩写 / 代表名称</div>
+                <div class="info-value" id="tzShort">--</div>
+            </div>
+        </div>
+
+        <!-- 实时本地时钟 -->
+        <div class="live-clock">
+            <div class="clock-title">📅 你的本地当前时间 (基于检测到的时区)</div>
+            <div class="clock-time" id="liveTime">--:--:--</div>
+            <div class="clock-date" id="liveDate">----年--月--日</div>
+        </div>
+
+        <!-- 高级/原始数据区域 -->
+        <div class="raw-details">
+            <div class="raw-title">🔍 详细技术参数</div>
+            <div class="raw-content" id="rawData">
+                // 等待时区数据加载...
+            </div>
+        </div>
+
+        <button id="refreshBtn">⟳ 重新检测时区 & 刷新时间</button>
+    </div>
+    <footer>
+        ⚡ 通过 JavaScript `Intl.DateTimeFormat().resolvedOptions()` 与 `Date` 对象获取真实时区 | 全部客户端计算
+    </footer>
+</div>
+
+<script>
+    (function() {
+        // DOM 元素
+        const tzNameEl = document.getElementById('tzName');
+        const tzOffsetEl = document.getElementById('tzOffset');
+        const tzShortEl = document.getElementById('tzShort');
+        const liveTimeEl = document.getElementById('liveTime');
+        const liveDateEl = document.getElementById('liveDate');
+        const rawDataEl = document.getElementById('rawData');
+        const refreshBtn = document.getElementById('refreshBtn');
+
+        // 辅助函数: 格式化偏移量 (+08:00, -03:30 等)
+        function formatOffsetFromMinutes(offsetMinutes) {
+            // offsetMinutes 是本地时区相对于 UTC 的偏移，单位分钟 (UTC+8 为 -480? 注意 JS 中 getTimezoneOffset 返回的是 UTC相对本地，单位分钟)
+            // 标准: new Date().getTimezoneOffset() 返回时区偏移的分钟数，本地时区落后UTC时为正? 
+            // 例如 UTC+8 时区，getTimezoneOffset() 返回 -480 (因为本地比UTC早8小时，偏移为负)。更直观为用户展示：UTC+8 显示 +08:00
+            // 所以我们转换: 本地偏移 = -offsetMinutes
+            const totalMinutesLocal = -offsetMinutes;
+            const sign = totalMinutesLocal >= 0 ? '+' : '-';
+            const absTotal = Math.abs(totalMinutesLocal);
+            const hours = Math.floor(absTotal / 60);
+            const minutes = absTotal % 60;
+            return `${sign}${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+        }
+
+        // 获取时区缩写（尽力模式）
+        function getTimezoneShort(date = new Date()) {
+            // 尝试使用 Intl.DateTimeFormat 获取时区缩写（部分环境支持，回退友好）
+            try {
+                // 构造一个格式，输出类似 "GMT+8" 或者 "CST" 等。使用 'zzzz' 在某些环境效果最好，但不同浏览器实现不同。
+                // 为了跨平台更可靠的展示，我们先尝试使用 Intl.DateTimeFormat 的时区名称
+                const formatter = new Intl.DateTimeFormat('en', { timeZoneName: 'short' });
+                const parts = formatter.formatToParts(date);
+                const tzPart = parts.find(part => part.type === 'timeZoneName');
+                if (tzPart && tzPart.value) {
+                    return tzPart.value;
+                }
+            } catch(e) { /* 降级处理 */ }
+            
+            // 后备: 根据偏移量生成类似 GMT+08:00 的字符串
+            const offset = new Date().getTimezoneOffset();
+            const formattedOffset = formatOffsetFromMinutes(offset);
+            return `GMT${formattedOffset}`;
+        }
+
+        // 获取完整 IANA 时区名称 (核心)
+        function getIANATimeZone() {
+            try {
+                // 最准确的方法: Intl.DateTimeFormat().resolvedOptions().timeZone
+                const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+                if (tz && tz.length > 0) {
+                    return tz;
+                }
+            } catch (err) {
+                console.warn("获取 IANA 时区失败", err);
+            }
+            // 极端情况降级
+            return "未知时区 (无法解析)";
+        }
+
+        // 构建详细数据对象，用于展示高级参数
+        function collectDetailedInfo() {
+            const now = new Date();
+            const tzIANA = getIANATimeZone();
+            const rawOffset = now.getTimezoneOffset();  // 分钟，本地相对于UTC的差值（UTC-本地）
+            const offsetFormatted = formatOffsetFromMinutes(rawOffset);
+            const timezoneAbbr = getTimezoneShort(now);
+            
+            // 获取所有可用的国际化区域设置相关信息 (语言)
+            const locale = navigator.language || '未知';
+            const userAgent = navigator.userAgent;
+            // 获取时区完整偏移秒数等额外信息
+            const utcFull = now.toUTCString();
+            const localFull = now.toString();
+            
+            // 构造一些更底层的环境信息
+            const platform = navigator.platform || 'unknown';
+            
+            return {
+                tzIANA,
+                offsetMinutes: rawOffset,
+                offsetFormatted,
+                timezoneAbbr,
+                locale,
+                utcFull,
+                localFull,
+                platform,
+                userAgent: userAgent.substring(0, 120) // 截断避免过长
+            };
+        }
+
+        // 刷新所有UI: 时区静态信息 + 实时时钟
+        function refreshTimeZoneInfo() {
+            // 采集最新的时区基础信息 (实时)
+            const tzName = getIANATimeZone();
+            const nowDate = new Date();
+            const offsetMinutes = nowDate.getTimezoneOffset();
+            const offsetFormatted = formatOffsetFromMinutes(offsetMinutes);
+            const shortAbbr = getTimezoneShort(nowDate);
+            
+            // 更新主卡片
+            tzNameEl.textContent = tzName;
+            // 偏移量美化，增加偏移描述
+            const signHuman = offsetMinutes <= 0 ? "比UTC快" : "比UTC慢";
+            const absOffset = Math.abs(offsetMinutes);
+            const offsetHours = Math.floor(absOffset / 60);
+            const offsetMinsRem = absOffset % 60;
+            let offsetDetail = `${offsetFormatted}  (${signHuman} ${offsetHours}小时`;
+            if (offsetMinsRem !== 0) offsetDetail += `${offsetMinsRem}分钟`;
+            offsetDetail += `)`;
+            tzOffsetEl.innerHTML = `<span class="offset-badge">${offsetFormatted}</span> <span style="font-size:0.85rem; font-weight:normal;">${offsetDetail}</span>`;
+            tzShortEl.textContent = shortAbbr;
+            
+            // 更新实时时钟 (每次调用都会刷新当前时间)
+            updateLiveClock();
+            
+            // 收集所有高级技术细节并更新raw区域
+            const details = collectDetailedInfo();
+            const rawHtml = `
+📌 IANA时区全称: ${escapeHtml(details.tzIANA)}<br>
+📐 UTC偏移分钟数: ${details.offsetMinutes} 分钟<br>
+🧭 偏移格式化: ${details.offsetFormatted}<br>
+📛 时区缩写/简称: ${escapeHtml(details.timezoneAbbr)}<br>
+🌐 浏览器语言: ${escapeHtml(details.locale)}<br>
+💻 平台信息: ${escapeHtml(details.platform)}<br>
+🕰️ UTC 完整时间: ${escapeHtml(details.utcFull)}<br>
+🖥️ 本地完整时间: ${escapeHtml(details.localFull)}<br>
+📱 UserAgent(简): ${escapeHtml(details.userAgent)}<br>
+🔧 检测方法: Intl API + Date getTimezoneOffset
+            `;
+            rawDataEl.innerHTML = rawHtml;
+        }
+        
+        // 简单防XSS辅助
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/[&<>]/g, function(m) {
+                if (m === '&') return '&amp;';
+                if (m === '<') return '&lt;';
+                if (m === '>') return '&gt;';
+                return m;
+            }).replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]/g, function(c) {
+                return c;
+            });
+        }
+        
+        // 更新实时时钟 (基于当前本地时间)
+        function updateLiveClock() {
+            const now = new Date();
+            // 格式化时间 HH:MM:SS
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const seconds = String(now.getSeconds()).padStart(2, '0');
+            const timeString = `${hours}:${minutes}:${seconds}`;
+            
+            // 格式化日期: 年月日 + 星期
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            const weekdays = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
+            const weekday = weekdays[now.getDay()];
+            const dateString = `${year}年${month}月${day}日 ${weekday}`;
+            
+            liveTimeEl.textContent = timeString;
+            liveDateEl.textContent = dateString;
+        }
+        
+        // 实时时钟的循环刷新 (每秒)
+        let clockInterval = null;
+        function startLiveClock() {
+            if (clockInterval) clearInterval(clockInterval);
+            // 立即刷新一次
+            updateLiveClock();
+            clockInterval = setInterval(() => {
+                updateLiveClock();
+            }, 1000);
+        }
+        
+        // 处理手动刷新: 重新获取所有时区参数并刷新界面 (同时实时时钟保持运行)
+        function handleManualRefresh() {
+            refreshTimeZoneInfo();
+            // 添加细微的视觉反馈 (按钮震动提示)
+            refreshBtn.style.transform = 'scale(0.97)';
+            setTimeout(() => {
+                refreshBtn.style.transform = '';
+            }, 150);
+        }
+        
+        // 页面初始化时做一次完全检测，并启动时钟
+        function init() {
+            refreshTimeZoneInfo();
+            startLiveClock();
+            
+            // 附加监听：页面可见性变化时可以不需要额外操作，但可以确保时钟不重复
+            // 另外如果因为时区变更(极端情况，用户改变系统时区且页面未刷新)？ 提供手动刷新按钮让用户自行同步。
+            // 监听 focus 事件可自动轻量刷新时区信息? 为了防止过于频繁且避免用户困惑，仅在重新获取焦点时快速刷新一次时区信息（但保留时钟不中断）
+            window.addEventListener('focus', () => {
+                // 在页面重新获得焦点时重新获取最新的时区信息 (应对系统时区动态变化)
+                // 但是某些浏览器在系统时区变更后，Date 对象会更新，刷新信息有助于同步。
+                refreshTimeZoneInfo();
+            });
+            
+            // 按钮事件
+            refreshBtn.addEventListener('click', handleManualRefresh);
+        }
+        
+        // 启动应用
+        init();
+    })();
+</script>
+</body>
+</html>
