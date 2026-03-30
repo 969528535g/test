@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <title>时区检测工具 | 精准获取本地时区信息</title>
+    <title>时区检测器 | IANA时区 · 偏移分钟 · 本地字符串 · 语言</title>
     <style>
         * {
             margin: 0;
@@ -12,7 +12,7 @@
         }
 
         body {
-            background: linear-gradient(145deg, #f0f4fa 0%, #d9e0eb 100%);
+            background: linear-gradient(135deg, #0b2b40 0%, #1a4a5f 100%);
             min-height: 100vh;
             display: flex;
             justify-content: center;
@@ -21,31 +21,36 @@
             padding: 20px;
         }
 
-        /* 卡片容器 */
+        /* 主卡片 */
         .card {
-            max-width: 800px;
+            max-width: 1000px;
             width: 100%;
-            background: rgba(255, 255, 255, 0.96);
+            background: rgba(255, 255, 255, 0.98);
             backdrop-filter: blur(0px);
             border-radius: 48px;
-            box-shadow: 0 25px 45px -12px rgba(0, 0, 0, 0.3), 0 4px 12px rgba(0, 0, 0, 0.05);
+            box-shadow: 0 30px 50px -20px rgba(0, 0, 0, 0.4), 0 8px 20px rgba(0, 0, 0, 0.1);
             overflow: hidden;
-            transition: all 0.2s ease;
-            border: 1px solid rgba(255, 255, 255, 0.5);
+            transition: transform 0.2s ease;
+            border: 1px solid rgba(255, 255, 255, 0.3);
         }
 
-        /* 头部样式 */
+        .card:hover {
+            transform: translateY(-3px);
+        }
+
+        /* 头部 */
         .header {
-            background: #1e2a3e;
+            background: #0f2c38;
             padding: 28px 32px;
             color: white;
             text-align: center;
+            border-bottom: 4px solid #ffb347;
         }
 
         .header h1 {
-            font-size: 1.9rem;
-            font-weight: 600;
-            letter-spacing: -0.3px;
+            font-size: 2rem;
+            font-weight: 700;
+            letter-spacing: -0.5px;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -53,187 +58,198 @@
             flex-wrap: wrap;
         }
 
-        .header h1 span {
+        .header h1::before {
+            content: "🕒";
+            font-size: 2rem;
+        }
+
+        .badge {
             background: rgba(255, 255, 255, 0.2);
-            padding: 6px 14px;
+            padding: 6px 16px;
             border-radius: 60px;
-            font-size: 0.9rem;
+            font-size: 0.8rem;
             font-weight: 500;
             font-family: monospace;
         }
 
         .sub {
             margin-top: 12px;
-            font-size: 0.9rem;
-            opacity: 0.8;
+            font-size: 0.85rem;
+            opacity: 0.85;
         }
 
-        /* 主要内容区 */
+        /* 内容区 */
         .content {
-            padding: 32px 28px 40px;
+            padding: 32px 30px 40px;
         }
 
-        /* 信息卡片组 */
-        .info-grid {
-            display: flex;
-            flex-direction: column;
+        /* 参数卡片网格 */
+        .param-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
             gap: 24px;
             margin-bottom: 32px;
         }
 
-        .info-item {
-            background: #f8fafc;
-            border-radius: 28px;
-            padding: 6px 0 6px 0;
-            transition: transform 0.1s ease;
+        .param-card {
+            background: #fefefe;
+            border-radius: 32px;
+            padding: 6px 0 8px 0;
+            box-shadow: 0 6px 14px rgba(0, 0, 0, 0.05);
             border: 1px solid #e2edf2;
-            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.02);
+            transition: all 0.2s;
         }
 
-        .info-label {
+        .param-card:hover {
+            border-color: #ffb347;
+            box-shadow: 0 12px 20px rgba(0, 0, 0, 0.08);
+        }
+
+        .param-label {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 1.8px;
+            font-weight: 800;
+            color: #e67e22;
+            padding: 16px 24px 6px 24px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .param-label span {
+            font-size: 1.2rem;
+        }
+
+        .param-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            padding: 8px 24px 20px 24px;
+            color: #1a3e4c;
+            word-break: break-word;
+            font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace;
+            background: #fafcfd;
+            border-radius: 24px;
+            margin: 0 12px 12px 12px;
+            border-left: 4px solid #ffb347;
+        }
+
+        /* 特殊高亮区域 */
+        .highlight-block {
+            background: linear-gradient(145deg, #fef5e8, #fff7ef);
+            border-radius: 32px;
+            padding: 20px 28px;
+            margin: 20px 0 24px;
+            border: 1px solid #ffddb0;
+        }
+
+        .row-detail {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: baseline;
+            padding: 12px 0;
+            border-bottom: 1px dashed #ffd9a5;
+        }
+
+        .row-detail:last-child {
+            border-bottom: none;
+        }
+
+        .detail-label {
+            font-weight: 700;
+            color: #b45f1b;
+            font-size: 0.85rem;
+            letter-spacing: 0.5px;
+        }
+
+        .detail-value {
+            font-family: monospace;
+            font-size: 0.95rem;
+            color: #1e4660;
+            word-break: break-all;
+            text-align: right;
+            max-width: 65%;
+        }
+
+        /* 实时辅助区域 */
+        .live-preview {
+            background: #0f2c38;
+            border-radius: 28px;
+            padding: 20px 24px;
+            color: white;
+            margin: 16px 0 20px;
+        }
+
+        .preview-title {
             font-size: 0.75rem;
             text-transform: uppercase;
-            letter-spacing: 1.5px;
-            font-weight: 700;
-            color: #4b6a8b;
-            padding: 12px 24px 4px 24px;
-        }
-
-        .info-value {
-            font-size: 1.55rem;
-            font-weight: 600;
-            padding: 6px 24px 20px 24px;
-            color: #0a1c2f;
-            word-break: break-word;
-            font-family: 'SF Mono', 'Fira Code', monospace;
-        }
-
-        /* 特殊高亮 */
-        .timezone-full {
-            background: linear-gradient(135deg, #eef2ff, #ffffff);
-            border-left: 6px solid #3b82f6;
-        }
-
-        .offset-badge {
-            background: #e6f0ff;
-            display: inline-block;
-            padding: 4px 14px;
-            border-radius: 60px;
-            font-size: 1.2rem;
-            font-weight: 500;
-        }
-
-        /* 实时时钟区域 */
-        .live-clock {
-            background: #1e293b;
-            border-radius: 28px;
-            padding: 20px 24px;
-            margin-top: 8px;
-            margin-bottom: 24px;
-            color: white;
-            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
-        }
-
-        .clock-title {
-            font-size: 0.85rem;
-            text-transform: uppercase;
             letter-spacing: 2px;
-            font-weight: 500;
-            color: #94a3b8;
+            opacity: 0.7;
             margin-bottom: 12px;
         }
 
-        .clock-time {
-            font-size: 2.6rem;
+        .preview-time {
+            font-size: 2.2rem;
             font-weight: 700;
             font-family: monospace;
             letter-spacing: 2px;
-            display: flex;
-            align-items: baseline;
-            flex-wrap: wrap;
-            gap: 12px;
         }
 
-        .clock-date {
-            font-size: 1rem;
-            font-weight: 400;
-            color: #cbd5e6;
+        .preview-date {
+            font-size: 0.9rem;
             margin-top: 8px;
+            opacity: 0.8;
         }
 
-        /* 额外技术细节 */
-        .raw-details {
-            background: #f1f5f9;
-            border-radius: 24px;
-            padding: 20px 24px;
-            font-family: monospace;
-            font-size: 0.85rem;
-            border: 1px solid #e0e9f0;
-            margin-top: 12px;
-        }
-
-        .raw-title {
-            font-weight: 700;
-            color: #2c3e50;
-            margin-bottom: 12px;
-            font-size: 0.8rem;
-            letter-spacing: 1px;
-            text-transform: uppercase;
-        }
-
-        .raw-content {
-            color: #1e2a3a;
-            background: #ffffffd9;
-            padding: 12px 16px;
-            border-radius: 18px;
-            overflow-x: auto;
-            white-space: pre-wrap;
-            word-break: break-all;
-            font-size: 0.8rem;
-        }
-
+        /* 按钮 */
         button {
-            background: #2c3e66;
+            background: #e67e22;
             border: none;
             color: white;
-            padding: 12px 24px;
-            font-size: 0.9rem;
-            font-weight: 600;
-            border-radius: 40px;
+            padding: 14px 28px;
+            font-size: 1rem;
+            font-weight: 700;
+            border-radius: 60px;
             cursor: pointer;
             transition: all 0.2s ease;
-            margin-top: 8px;
             width: 100%;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 5px 12px rgba(0, 0, 0, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
         }
 
         button:hover {
-            background: #1e2f4b;
+            background: #cf711f;
             transform: scale(0.98);
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
         }
 
         footer {
             text-align: center;
             font-size: 0.7rem;
             padding: 20px 24px 24px;
-            color: #5c6f87;
-            border-top: 1px solid #e9edf2;
-            background: #ffffffd0;
+            color: #5f7f8c;
+            border-top: 1px solid #e2eef5;
+            background: #fefefe;
         }
 
-        @media (max-width: 550px) {
+        @media (max-width: 700px) {
+            .param-value {
+                font-size: 1.1rem;
+                padding: 6px 20px 16px 20px;
+            }
             .content {
                 padding: 24px 18px;
             }
-            .info-value {
-                font-size: 1.25rem;
-                padding: 4px 20px 16px 20px;
+            .preview-time {
+                font-size: 1.5rem;
             }
-            .clock-time {
-                font-size: 1.8rem;
-            }
-            .header h1 {
-                font-size: 1.4rem;
+            .detail-value {
+                max-width: 55%;
+                font-size: 0.8rem;
             }
         }
     </style>
@@ -243,258 +259,227 @@
 <div class="card">
     <div class="header">
         <h1>
-            🌍 时区检测器
-            <span>TimeZone API</span>
+            时区核心参数
+            <span class="badge">Intl + navigator</span>
         </h1>
-        <div class="sub">基于 JavaScript Intl 与 浏览器时区数据 · 完全本地检测</div>
+        <div class="sub">基于 JavaScript 原生 API · 完全客户端检测</div>
     </div>
 
     <div class="content">
-        <!-- 主要信息网格 -->
-        <div class="info-grid">
-            <div class="info-item">
-                <div class="info-label">🕒 IANA 时区名称</div>
-                <div class="info-value" id="tzName">加载中...</div>
+        <!-- 四个主要参数网格 符合需求: IANA名称 | 偏移分钟 | 本地字符串 | 语言 -->
+        <div class="param-grid">
+            <div class="param-card">
+                <div class="param-label"><span>🌐</span> IANA 时区名称</div>
+                <div class="param-value" id="ianaName">-- 检测中 --</div>
             </div>
-            <div class="info-item">
-                <div class="info-label">⏱️ UTC 偏移量 (当前)</div>
-                <div class="info-value" id="tzOffset">--</div>
+            <div class="param-card">
+                <div class="param-label"><span>⏱️</span> 偏移分钟 (UTC相对本地)</div>
+                <div class="param-value" id="offsetMinutes">-- 分钟 --</div>
             </div>
-            <div class="info-item">
-                <div class="info-label">🏷️ 时区缩写 / 代表名称</div>
-                <div class="info-value" id="tzShort">--</div>
+            <div class="param-card">
+                <div class="param-label"><span>📜</span> 本地字符串 .toString()</div>
+                <div class="param-value" id="localString">-- 生成中 --</div>
             </div>
-        </div>
-
-        <!-- 实时本地时钟 -->
-        <div class="live-clock">
-            <div class="clock-title">📅 你的本地当前时间 (基于检测到的时区)</div>
-            <div class="clock-time" id="liveTime">--:--:--</div>
-            <div class="clock-date" id="liveDate">----年--月--日</div>
-        </div>
-
-        <!-- 高级/原始数据区域 -->
-        <div class="raw-details">
-            <div class="raw-title">🔍 详细技术参数</div>
-            <div class="raw-content" id="rawData">
-                // 等待时区数据加载...
+            <div class="param-card">
+                <div class="param-label"><span>🗣️</span> 浏览器语言 (navigator.language)</div>
+                <div class="param-value" id="language">-- 获取中 --</div>
             </div>
         </div>
 
-        <button id="refreshBtn">⟳ 重新检测时区 & 刷新时间</button>
+        <!-- 额外详细展示区：包含所有预期内容强化显示 末尾含时区标识 (验证香港等场景)-->
+        <div class="highlight-block">
+            <div class="row-detail">
+                <span class="detail-label">📌 IANA 全称 (resolvedOptions)</span>
+                <span class="detail-value" id="detailIana">--</span>
+            </div>
+            <div class="row-detail">
+                <span class="detail-label">🧮 偏移分钟 (getTimezoneOffset)</span>
+                <span class="detail-value" id="detailOffset">-- 分钟</span>
+            </div>
+            <div class="row-detail">
+                <span class="detail-label">🔤 本地字符串完整内容</span>
+                <span class="detail-value" id="detailFullString">--</span>
+            </div>
+            <div class="row-detail">
+                <span class="detail-label">🌍 语言标签 (navigator.language)</span>
+                <span class="detail-value" id="detailLang">--</span>
+            </div>
+            <div class="row-detail">
+                <span class="detail-label">🕒 当前时间 (基于本地时区)</span>
+                <span class="detail-value" id="currentTimeCompact">--</span>
+            </div>
+        </div>
+
+        <!-- 实时时钟卡片 (展示本地字符串的动态末尾) -->
+        <div class="live-preview">
+            <div class="preview-title">📡 动态验证 · 实时本地字符串末尾（含时区标识）</div>
+            <div class="preview-time" id="liveStringPreview">--</div>
+            <div class="preview-date" id="liveDatePreview">--</div>
+        </div>
+
+        <!-- 刷新按钮 -->
+        <button id="refreshBtn">
+            🔄 重新检测全部参数 (时区/偏移/语言)
+        </button>
     </div>
     <footer>
-        ⚡ 通过 JavaScript `Intl.DateTimeFormat().resolvedOptions()` 与 `Date` 对象获取真实时区 | 全部客户端计算
+        ⚡ 预期值示例: IANA: Asia/Hong_Kong | 偏移: -480 | 本地字符串末尾含 "Hong Kong" | 语言: zh-CN / en-US 等
     </footer>
 </div>
 
 <script>
     (function() {
-        // DOM 元素
-        const tzNameEl = document.getElementById('tzName');
-        const tzOffsetEl = document.getElementById('tzOffset');
-        const tzShortEl = document.getElementById('tzShort');
-        const liveTimeEl = document.getElementById('liveTime');
-        const liveDateEl = document.getElementById('liveDate');
-        const rawDataEl = document.getElementById('rawData');
+        // DOM 元素绑定 (四大核心区域)
+        const ianaNameEl = document.getElementById('ianaName');
+        const offsetMinutesEl = document.getElementById('offsetMinutes');
+        const localStringEl = document.getElementById('localString');
+        const languageEl = document.getElementById('language');
+        
+        // 详细区域元素
+        const detailIana = document.getElementById('detailIana');
+        const detailOffset = document.getElementById('detailOffset');
+        const detailFullString = document.getElementById('detailFullString');
+        const detailLang = document.getElementById('detailLang');
+        const currentTimeCompact = document.getElementById('currentTimeCompact');
+        
+        // 实时预览区
+        const liveStringPreview = document.getElementById('liveStringPreview');
+        const liveDatePreview = document.getElementById('liveDatePreview');
+        
         const refreshBtn = document.getElementById('refreshBtn');
-
-        // 辅助函数: 格式化偏移量 (+08:00, -03:30 等)
-        function formatOffsetFromMinutes(offsetMinutes) {
-            // offsetMinutes 是本地时区相对于 UTC 的偏移，单位分钟 (UTC+8 为 -480? 注意 JS 中 getTimezoneOffset 返回的是 UTC相对本地，单位分钟)
-            // 标准: new Date().getTimezoneOffset() 返回时区偏移的分钟数，本地时区落后UTC时为正? 
-            // 例如 UTC+8 时区，getTimezoneOffset() 返回 -480 (因为本地比UTC早8小时，偏移为负)。更直观为用户展示：UTC+8 显示 +08:00
-            // 所以我们转换: 本地偏移 = -offsetMinutes
-            const totalMinutesLocal = -offsetMinutes;
-            const sign = totalMinutesLocal >= 0 ? '+' : '-';
-            const absTotal = Math.abs(totalMinutesLocal);
-            const hours = Math.floor(absTotal / 60);
-            const minutes = absTotal % 60;
-            return `${sign}${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
-        }
-
-        // 获取时区缩写（尽力模式）
-        function getTimezoneShort(date = new Date()) {
-            // 尝试使用 Intl.DateTimeFormat 获取时区缩写（部分环境支持，回退友好）
+        
+        // ---------- 核心函数: 获取四个关键参数 ----------
+        function getIANAName() {
             try {
-                // 构造一个格式，输出类似 "GMT+8" 或者 "CST" 等。使用 'zzzz' 在某些环境效果最好，但不同浏览器实现不同。
-                // 为了跨平台更可靠的展示，我们先尝试使用 Intl.DateTimeFormat 的时区名称
-                const formatter = new Intl.DateTimeFormat('en', { timeZoneName: 'short' });
-                const parts = formatter.formatToParts(date);
-                const tzPart = parts.find(part => part.type === 'timeZoneName');
-                if (tzPart && tzPart.value) {
-                    return tzPart.value;
-                }
-            } catch(e) { /* 降级处理 */ }
-            
-            // 后备: 根据偏移量生成类似 GMT+08:00 的字符串
-            const offset = new Date().getTimezoneOffset();
-            const formattedOffset = formatOffsetFromMinutes(offset);
-            return `GMT${formattedOffset}`;
-        }
-
-        // 获取完整 IANA 时区名称 (核心)
-        function getIANATimeZone() {
-            try {
-                // 最准确的方法: Intl.DateTimeFormat().resolvedOptions().timeZone
-                const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-                if (tz && tz.length > 0) {
-                    return tz;
-                }
-            } catch (err) {
-                console.warn("获取 IANA 时区失败", err);
+                const resolved = Intl.DateTimeFormat().resolvedOptions();
+                return resolved.timeZone || "未检测到IANA时区 (可能浏览器不支持)";
+            } catch (e) {
+                console.warn("获取IANA名称失败", e);
+                return "获取失败: " + e.message;
             }
-            // 极端情况降级
-            return "未知时区 (无法解析)";
         }
-
-        // 构建详细数据对象，用于展示高级参数
-        function collectDetailedInfo() {
-            const now = new Date();
-            const tzIANA = getIANATimeZone();
-            const rawOffset = now.getTimezoneOffset();  // 分钟，本地相对于UTC的差值（UTC-本地）
-            const offsetFormatted = formatOffsetFromMinutes(rawOffset);
-            const timezoneAbbr = getTimezoneShort(now);
-            
-            // 获取所有可用的国际化区域设置相关信息 (语言)
-            const locale = navigator.language || '未知';
-            const userAgent = navigator.userAgent;
-            // 获取时区完整偏移秒数等额外信息
-            const utcFull = now.toUTCString();
-            const localFull = now.toString();
-            
-            // 构造一些更底层的环境信息
-            const platform = navigator.platform || 'unknown';
-            
-            return {
-                tzIANA,
-                offsetMinutes: rawOffset,
-                offsetFormatted,
-                timezoneAbbr,
-                locale,
-                utcFull,
-                localFull,
-                platform,
-                userAgent: userAgent.substring(0, 120) // 截断避免过长
-            };
+        
+        function getOffsetMinutes() {
+            // 返回 new Date().getTimezoneOffset() 原始值 (单位分钟)
+            const offset = new Date().getTimezoneOffset();
+            return offset;
         }
-
-        // 刷新所有UI: 时区静态信息 + 实时时钟
-        function refreshTimeZoneInfo() {
-            // 采集最新的时区基础信息 (实时)
-            const tzName = getIANATimeZone();
+        
+        function getLocalString() {
+            // 返回 new Date().toString() 完整本地字符串
+            return new Date().toString();
+        }
+        
+        function getNavigatorLanguage() {
+            return navigator.language || navigator.userLanguage || "未知语言";
+        }
+        
+        // 辅助: 格式化偏移显示 (带解释)
+        function formatOffsetWithExplanation(offsetMinutes) {
+            // offsetMinutes 为本地时区相对于UTC的差值，例如 UTC+8 返回 -480
+            // 为了方便理解，展示原始值 并且展示 UTC+X 格式
+            const sign = offsetMinutes <= 0 ? '+' : '-';
+            const absMin = Math.abs(offsetMinutes);
+            const hours = Math.floor(absMin / 60);
+            const mins = absMin % 60;
+            const utcString = `UTC${sign}${String(hours).padStart(2,'0')}:${String(mins).padStart(2,'0')}`;
+            return `${offsetMinutes} 分钟 (${utcString})`;
+        }
+        
+        // 更新所有UI: 读取实时数据 (核心刷新)
+        function refreshAllParameters() {
+            // 1. IANA 时区名称
+            const iana = getIANAName();
+            ianaNameEl.textContent = iana;
+            detailIana.textContent = iana;
+            
+            // 2. 偏移分钟
+            const offsetRaw = getOffsetMinutes();
+            const offsetFormatted = formatOffsetWithExplanation(offsetRaw);
+            offsetMinutesEl.textContent = offsetFormatted;
+            detailOffset.textContent = `${offsetRaw} 分钟 (原始值) → 本地比UTC ${offsetRaw <= 0 ? '快' : '慢'} ${Math.abs(offsetRaw)/60}小时`;
+            
+            // 3. 本地字符串 toString()
+            const localStr = getLocalString();
+            localStringEl.textContent = localStr;
+            detailFullString.textContent = localStr;
+            
+            // 4. 浏览器语言
+            const lang = getNavigatorLanguage();
+            languageEl.textContent = lang;
+            detailLang.textContent = lang;
+            
+            // 额外实时紧凑时间 (强化验证)
             const nowDate = new Date();
-            const offsetMinutes = nowDate.getTimezoneOffset();
-            const offsetFormatted = formatOffsetFromMinutes(offsetMinutes);
-            const shortAbbr = getTimezoneShort(nowDate);
+            const timeCompact = nowDate.toLocaleTimeString([], { hour: '2-digit', minute:'2-digit', second:'2-digit' });
+            const dateCompact = nowDate.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' });
+            currentTimeCompact.textContent = `${dateCompact} ${timeCompact}`;
             
-            // 更新主卡片
-            tzNameEl.textContent = tzName;
-            // 偏移量美化，增加偏移描述
-            const signHuman = offsetMinutes <= 0 ? "比UTC快" : "比UTC慢";
-            const absOffset = Math.abs(offsetMinutes);
-            const offsetHours = Math.floor(absOffset / 60);
-            const offsetMinsRem = absOffset % 60;
-            let offsetDetail = `${offsetFormatted}  (${signHuman} ${offsetHours}小时`;
-            if (offsetMinsRem !== 0) offsetDetail += `${offsetMinsRem}分钟`;
-            offsetDetail += `)`;
-            tzOffsetEl.innerHTML = `<span class="offset-badge">${offsetFormatted}</span> <span style="font-size:0.85rem; font-weight:normal;">${offsetDetail}</span>`;
-            tzShortEl.textContent = shortAbbr;
-            
-            // 更新实时时钟 (每次调用都会刷新当前时间)
-            updateLiveClock();
-            
-            // 收集所有高级技术细节并更新raw区域
-            const details = collectDetailedInfo();
-            const rawHtml = `
-📌 IANA时区全称: ${escapeHtml(details.tzIANA)}<br>
-📐 UTC偏移分钟数: ${details.offsetMinutes} 分钟<br>
-🧭 偏移格式化: ${details.offsetFormatted}<br>
-📛 时区缩写/简称: ${escapeHtml(details.timezoneAbbr)}<br>
-🌐 浏览器语言: ${escapeHtml(details.locale)}<br>
-💻 平台信息: ${escapeHtml(details.platform)}<br>
-🕰️ UTC 完整时间: ${escapeHtml(details.utcFull)}<br>
-🖥️ 本地完整时间: ${escapeHtml(details.localFull)}<br>
-📱 UserAgent(简): ${escapeHtml(details.userAgent)}<br>
-🔧 检测方法: Intl API + Date getTimezoneOffset
-            `;
-            rawDataEl.innerHTML = rawHtml;
+            // 更新动态预览: 实时本地字符串末尾展示 (每秒更新单独时钟会单独处理，但这里展示最新字符串即可)
+            updateLivePreviewSection();
         }
         
-        // 简单防XSS辅助
-        function escapeHtml(str) {
-            if (!str) return '';
-            return str.replace(/[&<>]/g, function(m) {
-                if (m === '&') return '&amp;';
-                if (m === '<') return '&lt;';
-                if (m === '>') return '&gt;';
-                return m;
-            }).replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]/g, function(c) {
-                return c;
-            });
-        }
-        
-        // 更新实时时钟 (基于当前本地时间)
-        function updateLiveClock() {
+        // 实时预览区域: 展示当前的本地字符串末尾 + 完整日期时间，重点突出时区标识
+        function updateLivePreviewSection() {
             const now = new Date();
-            // 格式化时间 HH:MM:SS
-            const hours = String(now.getHours()).padStart(2, '0');
-            const minutes = String(now.getMinutes()).padStart(2, '0');
-            const seconds = String(now.getSeconds()).padStart(2, '0');
-            const timeString = `${hours}:${minutes}:${seconds}`;
-            
-            // 格式化日期: 年月日 + 星期
-            const year = now.getFullYear();
-            const month = String(now.getMonth() + 1).padStart(2, '0');
-            const day = String(now.getDate()).padStart(2, '0');
-            const weekdays = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
-            const weekday = weekdays[now.getDay()];
-            const dateString = `${year}年${month}月${day}日 ${weekday}`;
-            
-            liveTimeEl.textContent = timeString;
-            liveDateEl.textContent = dateString;
+            const fullString = now.toString();
+            // 实时字符串完整内容
+            liveStringPreview.textContent = fullString;
+            // 附加说明：提取时区部分（通常位于括号内或者末尾单词，例如 GMT+0800 (Hong Kong)）
+            let tzHint = "";
+            const match = fullString.match(/\(([^)]+)\)/);
+            if (match && match[1]) {
+                tzHint = `时区标识: ${match[1]}`;
+            } else {
+                // 尝试获取最后一个空格后内容，常见为 GMT+0800 (中国标准时间)
+                const parts = fullString.split(' ');
+                if (parts.length > 4) {
+                    const possibleZone = parts.slice(4).join(' ');
+                    tzHint = `末尾片段: ${possibleZone.substring(0, 40)}`;
+                } else {
+                    tzHint = "时区标识未明确提取，但字符串完整如上";
+                }
+            }
+            // 附加日期显示
+            liveDatePreview.innerHTML = `📅 ${now.toLocaleString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })} &nbsp;|&nbsp; ${tzHint}`;
         }
         
-        // 实时时钟的循环刷新 (每秒)
-        let clockInterval = null;
-        function startLiveClock() {
-            if (clockInterval) clearInterval(clockInterval);
-            // 立即刷新一次
-            updateLiveClock();
-            clockInterval = setInterval(() => {
-                updateLiveClock();
+        // 实时时钟 (保持动态刷新local string，验证末尾是否含时区信息)
+        let realtimeInterval = null;
+        function startRealtimeUpdater() {
+            if (realtimeInterval) clearInterval(realtimeInterval);
+            // 更新实时预览区每一秒，但为了让页面性能良好且不闪烁严重，仅刷新实时预览区域和四大参数中的本地字符串也可以动态变化，
+            // 为了更好的体验，四大参数中的“本地字符串”最好随每一秒变化? 但是传统上也可以随手动刷新。但为了展示预期“本地字符串末尾含香港/时区”
+            // 我们保证实时预览区每秒变化，四大主要参数区可以手动刷新，同时也可以每10秒微刷新一次展示真实动态（可选）。但为了让用户感受到动态本地字符串，
+            // 我们可以让主要卡片区的“本地字符串”也每秒更新? 开销很小，但更符合直观。不过由于用户也可手动刷新，但最好自动展示实时，符合检测预期。
+            // 方案: 每秒刷新 main 区中 localString 以及实时预览，保持所有动态数据最新，同时偏移分钟和IANA一般不会动态变化，但以防系统时区变化，每秒调用刷新全部参数开销不大。
+            // 更严谨: 每秒钟刷新所有参数，确保本地字符串最新，偏移分钟如果系统时区变更(极少见)也能同步。
+            realtimeInterval = setInterval(() => {
+                // 每秒更新所有内容 (为了本地字符串显示最新，且验证末尾含时区)
+                refreshAllParameters();
             }, 1000);
         }
         
-        // 处理手动刷新: 重新获取所有时区参数并刷新界面 (同时实时时钟保持运行)
-        function handleManualRefresh() {
-            refreshTimeZoneInfo();
-            // 添加细微的视觉反馈 (按钮震动提示)
-            refreshBtn.style.transform = 'scale(0.97)';
+        // 手动刷新并给反馈
+        function manualRefresh() {
+            refreshAllParameters();
+            refreshBtn.style.transform = 'scale(0.96)';
             setTimeout(() => {
                 refreshBtn.style.transform = '';
             }, 150);
+            // 额外微震动感
         }
         
-        // 页面初始化时做一次完全检测，并启动时钟
+        // 初始化执行
         function init() {
-            refreshTimeZoneInfo();
-            startLiveClock();
+            refreshAllParameters();
+            startRealtimeUpdater();
+            refreshBtn.addEventListener('click', manualRefresh);
             
-            // 附加监听：页面可见性变化时可以不需要额外操作，但可以确保时钟不重复
-            // 另外如果因为时区变更(极端情况，用户改变系统时区且页面未刷新)？ 提供手动刷新按钮让用户自行同步。
-            // 监听 focus 事件可自动轻量刷新时区信息? 为了防止过于频繁且避免用户困惑，仅在重新获取焦点时快速刷新一次时区信息（但保留时钟不中断）
-            window.addEventListener('focus', () => {
-                // 在页面重新获得焦点时重新获取最新的时区信息 (应对系统时区动态变化)
-                // 但是某些浏览器在系统时区变更后，Date 对象会更新，刷新信息有助于同步。
-                refreshTimeZoneInfo();
-            });
-            
-            // 按钮事件
-            refreshBtn.addEventListener('click', handleManualRefresh);
+            // 如果页面可见性变化，保持时钟不浪费性能但已存在interval无需额外操作
+            // 同时为了避免后台累积定时器，但本身只有一个定时器，安全。
         }
         
-        // 启动应用
         init();
     })();
 </script>
